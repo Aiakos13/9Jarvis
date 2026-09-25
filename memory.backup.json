@@ -1,0 +1,20 @@
+{
+  "user": {
+    "name": "Sina",
+    "note": "من دارم روی پروژه 9Jarvis کار می‌کنم",
+    "preference": {
+      "programming_language": "Python",
+      "programming_languages": [
+        "C++",
+        "Rust",
+        "Go",
+        "JavaScript"
+      ],
+      "favorite_programming_languages": "Rust"
+    }
+  },
+  "project": {
+    "name": "9Jarvis",
+    "description": "Personal AI assistant"
+  }
+}

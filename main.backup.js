@@ -1,6 +1,5 @@
 const OpenAI = require("openai");
 const readline = require("readline");
-
 const {
   loadMemory,
   saveMemory,
@@ -10,9 +9,6 @@ const {
 } = require("./memory");
 
 const { detectMemoryQuery } = require("./memoryQueryDetector");
-const { detectTool } = require("./toolDetector");
-const { validateToolData } = require("./toolValidator");
-const { executeTool } = require("./tools");
 const { detectMemory } = require("./memoryDetector");
 const config = require("./config");
 
@@ -26,7 +22,10 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
-const SYSTEM_PROMPT = `
+const messages = [
+  {
+    role: "system",
+    content: `
 You are 9Jarvis, a personal AI assistant running locally for the user.
 
 Identity:
@@ -46,12 +45,12 @@ Language:
 - Respond in the same language as the user whenever possible.
 - If the user writes Persian, respond in Persian.
 - If the user writes English, respond in English.
-`;
 
-const messages = [
-  {
-    role: "system",
-    content: SYSTEM_PROMPT,
+Current capabilities:
+- You can understand conversation and maintain context during the current session.
+- You currently do not have access to computer control, files, applications, or external tools unless they are explicitly added later.
+
+`,
   },
 ];
 
@@ -79,44 +78,6 @@ async function processMemory(input) {
     console.log(`9Jarvis: Memory saved → ${memoryData.key}`);
   } catch (error) {
     console.error(`Memory error: ${error.message}`);
-  }
-}
-
-async function detectToolSafely(input) {
-  try {
-    const toolRaw = await detectTool(input);
-
-    if (!toolRaw) {
-      return {
-        needsTool: false,
-        tool: null,
-        input: null,
-      };
-    }
-
-    const toolData = JSON.parse(toolRaw);
-
-    const validation = validateToolData(toolData);
-
-    if (!validation.valid) {
-      console.error(`Tool validation error: ${validation.error}`);
-
-      return {
-        needsTool: false,
-        tool: null,
-        input: null,
-      };
-    }
-
-    return validation.data;
-  } catch (error) {
-    console.error(`Tool detection error: ${error.message}`);
-
-    return {
-      needsTool: false,
-      tool: null,
-      input: null,
-    };
   }
 }
 
@@ -150,56 +111,16 @@ function askUser() {
     });
 
     try {
-      // -------------------------
-      // Memory Retrieval
-      // -------------------------
-
+      messages[0].content = messages[0].content.replace(/Memory:\n[\s\S]*$/);
       const memoryQueryRaw = await detectMemoryQuery(input);
       const memoryQuery = JSON.parse(memoryQueryRaw);
 
       let selectedMemory = "{}";
 
-      if (
-        memoryQuery &&
-        memoryQuery.needsMemory &&
-        Array.isArray(memoryQuery.memories)
-      ) {
+      if (memoryQuery.needsMemory) {
         selectedMemory = buildMemoryContext(memoryQuery.memories);
       }
-
-      messages[0].content =
-        SYSTEM_PROMPT + `\n\nRelevant Memory:\n${selectedMemory}`;
-
-      // -------------------------
-      // Tool Detection
-      // -------------------------
-
-      const toolData = await detectToolSafely(input);
-
-      // -------------------------
-      // Tool Execution
-      // -------------------------
-
-      if (toolData.needsTool) {
-        const toolResult = executeTool(toolData.tool, toolData.input);
-
-        if (toolResult.success) {
-          messages.push({
-            role: "system",
-            content: `Tool result: ${toolResult.result}`,
-          });
-        } else {
-          messages.push({
-            role: "system",
-            content: `Tool error: ${toolResult.error}`,
-          });
-        }
-      }
-
-      // -------------------------
-      // LLM Response
-      // -------------------------
-
+      messages[0].content += `\n\nRelevant Memory:\n${selectedMemory}`;
       const response = await client.chat.completions.create({
         model: "openai/gpt-oss-20b",
         messages: messages,

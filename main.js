@@ -1,227 +1,204 @@
-const OpenAI = require("openai");
 const readline = require("readline");
+const OpenAI = require("openai");
 
-const {
-  loadMemory,
-  saveMemory,
-  updateMemory,
-  saveDetectedMemory,
-  buildMemoryContext,
-} = require("./memory");
-
-const { detectMemoryQuery } = require("./memoryQueryDetector");
-const { detectTool } = require("./toolDetector");
-const { validateToolData } = require("./toolValidator");
-const { executeTool } = require("./tools");
-const { detectMemory } = require("./memoryDetector");
 const config = require("./config");
+
+const { saveDetectedMemory, getMemoryContext } = require("./memory");
+
+const { runAgent } = require("./agent");
 
 const client = new OpenAI({
   apiKey: config.openRouterApiKey,
   baseURL: "https://openrouter.ai/api/v1",
 });
 
+const SYSTEM_PROMPT = `
+You are 9Jarvis, a personal AI assistant.
+
+Identity:
+- Your name is 9Jarvis.
+- Do not identify yourself as ChatGPT unless explicitly asked about the underlying model.
+- When the user speaks Persian, respond in Persian.
+
+Memory:
+- You will receive the current saved memory of the user.
+- Use the memory when it is relevant to the user's request.
+- Never invent memories.
+- If the memory contains the answer, use it directly.
+- If the memory does not contain the answer, say that you do not know instead of inventing information.
+
+Tools and Agent:
+- The Agent may execute tools before the final response.
+- Tool results are real data produced by 9Jarvis.
+- Treat successful tool results as authoritative.
+- Never ignore a successful tool result.
+- Never invent a different value from a tool result.
+- Do not explain internal Agent steps unless the user asks.
+
+Response style:
+- Be natural and concise.
+- When the user speaks Persian, answer in Persian.
+- Use simple conversational language.
+`;
+
+async function generateFinalResponse(userInput, memoryContext, agentHistory) {
+  const memoryText = JSON.stringify(memoryContext, null, 2);
+
+  const toolContext = agentHistory.length
+    ? `
+Tool execution history:
+
+${agentHistory
+  .map(
+    (item, index) =>
+      `Step ${index + 1}
+Tool: ${item.tool}
+Input: ${item.input || ""}
+Success: ${item.success}
+Result: ${item.result}`,
+  )
+  .join("\n\n")}
+`
+    : "No tools were executed.";
+
+  const response = await client.chat.completions.create({
+    model: "openai/gpt-oss-20b",
+    messages: [
+      {
+        role: "system",
+        content: SYSTEM_PROMPT,
+      },
+      {
+        role: "user",
+        content: `
+User request:
+${userInput}
+
+Saved memory:
+${memoryText}
+
+${toolContext}
+
+Now answer the user naturally.
+
+Important:
+- Use saved memory when relevant.
+- If the user asks for their name and memory contains:
+"user": {
+  "name": "Sina"
+}
+then answer that the user's name is Sina.
+- If a successful tool result exists, use it as the authoritative result.
+- Do not invent information.
+- Do not mention internal Agent steps.
+`,
+      },
+    ],
+  });
+
+  const content = response?.choices?.[0]?.message?.content;
+
+  if (!content || typeof content !== "string") {
+    throw new Error("Final response was empty.");
+  }
+
+  return content.trim();
+}
+
+async function askUser(userInput) {
+  try {
+    if (!userInput || typeof userInput !== "string") {
+      return;
+    }
+
+    const cleanInput = userInput.trim();
+
+    if (!cleanInput) {
+      return;
+    }
+
+    // ========================================
+    // 1. Detect and save memory
+    // ========================================
+
+    try {
+      const memoryResult = await saveDetectedMemory(cleanInput);
+
+      if (memoryResult?.saved) {
+        console.log(`🧠 Memory saved → ${memoryResult.key}`);
+      }
+    } catch (error) {
+      console.log(`⚠️ Memory saving skipped: ${error.message}`);
+    }
+
+    // ========================================
+    // 2. Load current memory
+    // ========================================
+
+    let memoryContext = {};
+
+    try {
+      memoryContext = getMemoryContext();
+    } catch (error) {
+      console.log(`⚠️ Memory loading skipped: ${error.message}`);
+    }
+
+    // ========================================
+    // 3. Run Agent
+    // ========================================
+
+    const agentResult = await runAgent(cleanInput);
+
+    if (!agentResult.success) {
+      console.log(`⚠️ Agent error: ${agentResult.error}`);
+    }
+
+    const agentHistory =
+      agentResult.success && Array.isArray(agentResult.history)
+        ? agentResult.history
+        : [];
+
+    // ========================================
+    // 4. Generate final response
+    // ========================================
+
+    const finalResponse = await generateFinalResponse(
+      cleanInput,
+      memoryContext,
+      agentHistory,
+    );
+
+    console.log(`9Jarvis: ${finalResponse}`);
+  } catch (error) {
+    console.error(`❌ Error: ${error.message}`);
+  }
+}
+
+// ========================================
+// CLI
+// ========================================
+
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
 
-const SYSTEM_PROMPT = `
-You are 9Jarvis, a personal AI assistant running locally for the user.
+console.log("🤖 9Jarvis is ready.");
+console.log("💬 Type your message. Type 'exit' to quit.\n");
 
-Identity:
-- Your name is 9Jarvis.
-- You are not ChatGPT. You are 9Jarvis.
-- You are an assistant designed to help the user with everyday tasks, learning, coding, planning, and computer-related work.
-
-Behavior:
-- Be clear, practical, and concise.
-- Do not over-explain simple things.
-- When a task is complicated, break it into small steps.
-- Never pretend that you performed an action when you did not.
-- If you do not know something, say so.
-- Ask for clarification only when it is actually necessary.
-
-Language:
-- Respond in the same language as the user whenever possible.
-- If the user writes Persian, respond in Persian.
-- If the user writes English, respond in English.
-`;
-
-const messages = [
-  {
-    role: "system",
-    content: SYSTEM_PROMPT,
-  },
-];
-
-async function processMemory(input) {
-  try {
-    const result = await detectMemory(input);
-
-    const memoryData = JSON.parse(result);
-
-    if (!memoryData.shouldRemember) {
-      return;
-    }
-
-    if (!memoryData.category || !memoryData.key || !memoryData.value) {
-      return;
-    }
-
-    saveDetectedMemory(
-      memoryData.category,
-      memoryData.key,
-      memoryData.value,
-      memoryData.multiple,
-    );
-
-    console.log(`9Jarvis: Memory saved → ${memoryData.key}`);
-  } catch (error) {
-    console.error(`Memory error: ${error.message}`);
-  }
-}
-
-async function detectToolSafely(input) {
-  try {
-    const toolRaw = await detectTool(input);
-
-    if (!toolRaw) {
-      return {
-        needsTool: false,
-        tool: null,
-        input: null,
-      };
-    }
-
-    const toolData = JSON.parse(toolRaw);
-
-    const validation = validateToolData(toolData);
-
-    if (!validation.valid) {
-      console.error(`Tool validation error: ${validation.error}`);
-
-      return {
-        needsTool: false,
-        tool: null,
-        input: null,
-      };
-    }
-
-    return validation.data;
-  } catch (error) {
-    console.error(`Tool detection error: ${error.message}`);
-
-    return {
-      needsTool: false,
-      tool: null,
-      input: null,
-    };
-  }
-}
-
-function askUser() {
-  rl.question("\nYou: ", async (input) => {
-    if (input.toLowerCase() === "exit") {
-      console.log("9Jarvis: Goodbye!");
+function startChat() {
+  rl.question("You: ", async (input) => {
+    if (input.trim().toLowerCase() === "exit") {
+      console.log("\n👋 خداحافظ !");
       rl.close();
       return;
     }
 
-    if (input.toLowerCase().startsWith("remember ")) {
-      const value = input.slice(9).trim();
+    await askUser(input);
 
-      if (value) {
-        updateMemory("user.note", value);
-        console.log("9Jarvis: یادم موند.");
-      } else {
-        console.log("9Jarvis: چیزی برای ذخیره کردن نگفتی.");
-      }
-
-      askUser();
-      return;
-    }
-
-    await processMemory(input);
-
-    messages.push({
-      role: "user",
-      content: input,
-    });
-
-    try {
-      // -------------------------
-      // Memory Retrieval
-      // -------------------------
-
-      const memoryQueryRaw = await detectMemoryQuery(input);
-      const memoryQuery = JSON.parse(memoryQueryRaw);
-
-      let selectedMemory = "{}";
-
-      if (
-        memoryQuery &&
-        memoryQuery.needsMemory &&
-        Array.isArray(memoryQuery.memories)
-      ) {
-        selectedMemory = buildMemoryContext(memoryQuery.memories);
-      }
-
-      messages[0].content =
-        SYSTEM_PROMPT + `\n\nRelevant Memory:\n${selectedMemory}`;
-
-      // -------------------------
-      // Tool Detection
-      // -------------------------
-
-      const toolData = await detectToolSafely(input);
-
-      // -------------------------
-      // Tool Execution
-      // -------------------------
-
-      if (toolData.needsTool) {
-        const toolResult = executeTool(toolData.tool, toolData.input);
-
-        if (toolResult.success) {
-          messages.push({
-            role: "system",
-            content: `Tool result: ${toolResult.result}`,
-          });
-        } else {
-          messages.push({
-            role: "system",
-            content: `Tool error: ${toolResult.error}`,
-          });
-        }
-      }
-
-      // -------------------------
-      // LLM Response
-      // -------------------------
-
-      const response = await client.chat.completions.create({
-        model: "openai/gpt-oss-20b",
-        messages: messages,
-      });
-
-      const reply = response.choices[0].message.content;
-
-      console.log(`9Jarvis: ${reply}`);
-
-      messages.push({
-        role: "assistant",
-        content: reply,
-      });
-    } catch (error) {
-      console.error(`\nError: ${error.message}`);
-    }
-
-    askUser();
+    console.log();
+    startChat();
   });
 }
 
-console.log("🤖 9Jarvis is ready!");
-console.log("Type 'exit' to quit.");
-
-askUser();
+startChat();

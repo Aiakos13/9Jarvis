@@ -3,7 +3,8 @@ const fs = require("fs");
 const MEMORY_FILE = "./memory.json";
 
 function loadMemory() {
-  return JSON.parse(fs.readFileSync(MEMORY_FILE, "utf-8"));
+  const content = fs.readFileSync(MEMORY_FILE, "utf-8");
+  return JSON.parse(content.replace(/^\uFEFF/, ""));
 }
 
 function saveMemory(memory) {
@@ -124,7 +125,11 @@ function getMemoryByKey(category, key) {
   const memory = loadMemory();
 
   if (category === "identity") {
-    return memory.user?.[key];
+    if (key === "name") {
+      return memory.user?.name;
+    }
+
+    return memory.user?.identity?.[key];
   }
 
   if (category === "project") {
@@ -153,7 +158,7 @@ function buildMemoryContext(requestedMemories) {
     }
   }
 
-  return JSON.stringify(result, null, 2);
+  return result;
 }
 
 module.exports = {

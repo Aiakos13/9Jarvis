@@ -23,6 +23,8 @@ Available memory keys:
 
 identity:
 - name
+- profession
+- age
 
 preference:
 - programming_languages
@@ -75,6 +77,8 @@ Rules:
 - Use only the available categories and keys.
 - Never invent a memory key.
 - Use canonical keys exactly as provided.
+- If the user asks what you remember about them, what information you have about them, what you know about them, or asks for a general summary of their stored information, return all available memory keys.
+- For a general memory summary request, set "needsMemory" to true.
         `,
       },
       {

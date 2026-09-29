@@ -3,7 +3,10 @@ const OpenAI = require("openai");
 
 const config = require("./config");
 
-const { saveDetectedMemory, getMemoryContext } = require("./memory");
+const { saveDetectedMemory, buildMemoryContext } = require("./memory");
+
+const { detectMemoryQuery } = require("./memoryQueryDetector");
+const { detectMemory } = require("./memoryDetector");
 
 const { runAgent } = require("./agent");
 
@@ -53,9 +56,9 @@ ${agentHistory
     (item, index) =>
       `Step ${index + 1}
 Tool: ${item.tool}
-Input: ${item.input || ""}
+Input: ${JSON.stringify(item.input)}
 Success: ${item.success}
-Result: ${item.result}`,
+Result: ${JSON.stringify(item.result)}`,
   )
   .join("\n\n")}
 `
@@ -81,16 +84,67 @@ ${toolContext}
 
 Now answer the user naturally.
 
-Important:
-- Use saved memory when relevant.
-- If the user asks for their name and memory contains:
-"user": {
-  "name": "Sina"
-}
-then answer that the user's name is Sina.
-- If a successful tool result exists, use it as the authoritative result.
-- Do not invent information.
-- Do not mention internal Agent steps.
+IMPORTANT RULES:
+
+MEMORY:
+- Use saved memory when it is relevant.
+- Never invent a memory.
+- If the requested information exists in memory, use it directly.
+- If the requested information does not exist in memory, say that you do not know.
+
+TOOL RESULTS:
+- Tool execution history contains real results produced by 9Jarvis.
+- A tool result with "Success: true" is authoritative.
+- If a successful tool result is relevant to the user's request, you MUST use it.
+- NEVER ignore a successful tool result.
+- NEVER replace a successful tool result with a different value.
+- NEVER say that the information could not be retrieved when a successful result exists.
+- NEVER invent information that is not present in the tool result.
+- Do not mention internal Agent steps, tool execution history, or implementation details.
+
+CALCULATOR:
+- Use the exact result returned by the calculator.
+
+TIME:
+- Use the exact time returned by the time tool.
+
+DATE:
+- Use the exact date returned by the date tool.
+
+RANDOM:
+- Use the exact number returned by the random tool.
+
+WEATHER:
+- Use the actual values returned by the weather tool.
+- Do not invent weather conditions that are not present in the result.
+- Do not invent temperature, humidity, wind speed, sky condition, or air quality.
+
+WEB SEARCH:
+- Use information from the successful search result.
+- Do not claim that the search failed if results were returned.
+- Do not invent facts that are not supported by the search results.
+
+CURRENCY:
+- Use the exact "rate" returned by the successful currency tool.
+- Clearly state the source currency, target currency, rate, and date when available.
+- If the result is:
+  {
+    "from": "USD",
+    "to": "EUR",
+    "rate": 0.88,
+    "date": "2026-09-29"
+  }
+  then explain it as:
+  "هر ۱ دلار آمریکا حدود ۰.۸۸ یورو است."
+- Do not say that the exchange rate could not be retrieved when a successful currency result exists.
+- Do not invent a different exchange rate.
+- If the user asks for an amount, calculate it from the returned rate only when the amount is explicitly available.
+
+RESPONSE STYLE:
+- Be concise and natural.
+- Answer directly.
+- When the user speaks Persian, respond in Persian.
+- Do not explain internal processing.
 `,
       },
     ],
@@ -98,7 +152,7 @@ then answer that the user's name is Sina.
 
   const content = response?.choices?.[0]?.message?.content;
 
-  if (!content || typeof content !== "string") {
+  if (!content || typeof content !== "string" || !content.trim()) {
     throw new Error("Final response was empty.");
   }
 
@@ -122,25 +176,58 @@ async function askUser(userInput) {
     // ========================================
 
     try {
-      const memoryResult = await saveDetectedMemory(cleanInput);
+      const detectedMemory = await detectMemory(cleanInput);
 
-      if (memoryResult?.saved) {
-        console.log(`🧠 Memory saved → ${memoryResult.key}`);
+      let memoryData;
+
+      try {
+        memoryData = JSON.parse(detectedMemory);
+      } catch {
+        memoryData = { shouldRemember: false };
+      }
+
+      if (memoryData.shouldRemember) {
+        const memoryResult = saveDetectedMemory(
+          memoryData.category,
+          memoryData.key,
+          memoryData.value,
+          memoryData.multiple,
+        );
+
+        console.log(`🧠 Memory saved → ${memoryData.key}`);
       }
     } catch (error) {
-      console.log(`⚠️ Memory saving skipped: ${error.message}`);
+      console.log(`⚠️ Memory detection skipped: ${error.message}`);
     }
 
     // ========================================
-    // 2. Load current memory
+    // 2. Retrieve relevant memory
     // ========================================
 
     let memoryContext = {};
 
     try {
-      memoryContext = getMemoryContext();
+      const detectedQuery = await detectMemoryQuery(cleanInput);
+
+      let memoryQueryData;
+
+      try {
+        memoryQueryData = JSON.parse(detectedQuery);
+      } catch {
+        memoryQueryData = {
+          needsMemory: false,
+          memories: [],
+        };
+      }
+
+      if (
+        memoryQueryData.needsMemory &&
+        Array.isArray(memoryQueryData.memories)
+      ) {
+        memoryContext = buildMemoryContext(memoryQueryData.memories);
+      }
     } catch (error) {
-      console.log(`⚠️ Memory loading skipped: ${error.message}`);
+      console.log(`⚠️ Memory retrieval skipped: ${error.message}`);
     }
 
     // ========================================

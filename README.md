@@ -2,24 +2,27 @@
 
 > A modular personal AI assistant built from the ground up.
 
-9Jarvis is a personal AI assistant project designed to grow from a simple conversational AI into a modular agent capable of memory, tool usage, multi-step reasoning, automation, and eventually computer interaction.
+9Jarvis is a personal AI assistant project designed to grow from a simple conversational AI into a modular agent capable of memory, tool usage, multi-step reasoning, automation, computer interaction, and eventually voice and graphical interfaces.
 
 The project is being built incrementally, with each stage tested before moving to the next one.
 
 ---
 
-## ✨ Vision
+# ✨ Vision
 
 The long-term goal of 9Jarvis is to become a personal AI system that can:
 
 - Understand natural language
 - Remember useful information about the user
+- Retrieve relevant memory and context
 - Decide when tools are needed
-- Execute tools and use their results
+- Select and execute tools
+- Use real tool results
 - Perform multi-step tasks
 - Automate recurring actions
 - Interact with the computer
-- Support voice and graphical interfaces
+- Support voice interaction
+- Provide a graphical interface
 
 The development path is:
 
@@ -34,11 +37,13 @@ Tools
   ↓
 Agent
   ↓
-Automation
-  ↓
 Computer Control
   ↓
-Voice / Interface
+Automation
+  ↓
+Voice
+  ↓
+Interface
   ↓
 Personal AI Assistant
 ```
@@ -53,7 +58,7 @@ Personal AI Assistant
 | 02    | AI Core          | ✅ Complete    |
 | 03    | Memory + Context | ✅ Complete    |
 | 04    | Tools            | ✅ Complete    |
-| 05    | Agent Loop       | 🟡 In Progress |
+| 05    | Agent            | 🟡 In Progress |
 | 06    | Computer Control | ⚪ Planned     |
 | 07    | Automation       | ⚪ Planned     |
 | 08    | Voice            | ⚪ Planned     |
@@ -63,23 +68,37 @@ Personal AI Assistant
 
 **Phase 05 — Agent**
 
-The current goal is to make the Agent capable of reliable multi-step task execution while keeping Memory, Tools, and final response generation stable.
+Phase 04 established a modular Tool system.
+
+The current focus is improving the Agent so it can reliably:
+
+- Understand the user's task
+- Decide which tool is required
+- Execute the correct tool
+- Track previous tool executions
+- Avoid unnecessary repeated execution
+- Use successful tool results
+- Perform reliable multi-step tasks
+- Maintain useful context during execution
+
+The current Agent architecture is functional, but multi-step planning and orchestration are still being improved.
 
 ---
 
 # 🧩 Current Features
 
-### AI Core
+## AI Core
 
 - AI-powered conversations
 - OpenRouter integration
+- OpenAI SDK
 - Custom system prompt
-- 9Jarvis identity and behavior
+- 9Jarvis identity
 - Persian language responses
-- Basic error handling
 - Terminal interface
+- Basic error handling
 
-### Memory
+## Memory
 
 - Persistent local memory
 - Memory detection
@@ -88,19 +107,24 @@ The current goal is to make the Agent capable of reliable multi-step task execut
 - User memory
 - Project memory
 - Memory context generation
+- Duplicate memory prevention
+- Targeted memory retrieval
 
-### Tools
+## Tools
 
-- Tool detection
+- Modular Tool architecture
 - Tool validation
-- Calculator tool
-- Time tool
-- Date tool
-- Random number tool
 - Tool execution
-- Tool result handling
+- Calculator
+- Time
+- Date
+- Random number
+- Web Search
+- Geocoding
+- Weather
+- Currency exchange rates
 
-### Agent
+## Agent
 
 - Agent decision loop
 - Tool selection
@@ -108,8 +132,11 @@ The current goal is to make the Agent capable of reliable multi-step task execut
 - Tool result history
 - Finish action
 - Maximum step protection
-- Retry handling for invalid/empty model responses
+- Retry handling
+- Invalid response handling
 - Prevention of unnecessary repeated tool execution
+- Tool result awareness
+- Integration with final response generation
 
 ---
 
@@ -123,7 +150,7 @@ Memory is stored in:
 memory.json
 ```
 
-The system currently supports persistent information such as:
+The current memory system can store information such as:
 
 ```json
 {
@@ -139,7 +166,14 @@ The system currently supports persistent information such as:
         "Python",
         "TypeScript",
         "PHP"
-      ]
+      ],
+      "technologies": ["React"],
+      "favorite_games": ["GTA"],
+      "favorite_music": ["Turkish music", "rock", "Jazz", "classical"]
+    },
+    "identity": {
+      "profession": "programmer",
+      "age": "23"
     }
   },
   "project": {
@@ -151,7 +185,7 @@ The system currently supports persistent information such as:
 
 The memory layer is responsible for storing and retrieving information that should persist between sessions.
 
-### Memory Components
+## Memory Components
 
 ```text
 memory.js
@@ -160,7 +194,18 @@ memoryQueryDetector.js
 memory.json
 ```
 
-The current memory system supports both single values and multiple values for the same category.
+The memory system supports:
+
+- Single-value memories
+- Multiple values
+- User information
+- Preferences
+- Project information
+- Memory querying
+- Relevant memory retrieval
+- Generated memory context
+
+The system is designed so that unrelated requests do not unnecessarily retrieve memory.
 
 ---
 
@@ -175,23 +220,29 @@ calculator
 time
 date
 random
+web_search
+geocode
+weather
+currency
 ```
 
-The general flow is:
+The general execution flow is:
 
 ```text
 User Request
      ↓
-Tool Detection
+Agent Decision
      ↓
 Tool Validation
      ↓
 Tool Execution
      ↓
 Tool Result
+     ↓
+Agent / Final Response
 ```
 
-### Calculator
+## Calculator
 
 Example:
 
@@ -200,16 +251,18 @@ User: 23 * 17
 9Jarvis: 391
 ```
 
-### Time
+The calculator validates mathematical expressions before execution.
+
+## Time
 
 Example:
 
 ```text
 User: ساعت چنده؟
-9Jarvis: ساعت ۱:۵۵:۱۳ است.
+9Jarvis: ساعت ۱۶:۱۷:۵۷ است.
 ```
 
-### Date
+## Date
 
 Example:
 
@@ -218,13 +271,102 @@ User: امروز چندمه؟
 9Jarvis: ۱۴۰۵/۷/۶
 ```
 
-### Random
+## Random
 
 Example:
 
 ```text
 User: یک عدد تصادفی بده
-9Jarvis: عدد تصادفی شما: 48!
+9Jarvis: 48
+```
+
+## Web Search
+
+9Jarvis can perform external web searches when the requested information requires current or external information.
+
+Example:
+
+```text
+User: OpenAI رو تعریف کن
+9Jarvis: ...
+```
+
+The Web Search tool uses an external search API and returns structured search results to the Agent.
+
+## Geocoding
+
+The Geocoding tool converts a city name into geographic coordinates.
+
+Example:
+
+```text
+City
+ ↓
+Latitude + Longitude
+```
+
+It is also used internally by the Weather tool when a city name is provided.
+
+## Weather
+
+The Weather tool can receive a city name directly.
+
+Example:
+
+```text
+User: آب و هوای تبریز چطوره؟
+9Jarvis: ...
+```
+
+The tool:
+
+```text
+City
+ ↓
+Geocoding
+ ↓
+Latitude + Longitude
+ ↓
+Weather API
+ ↓
+Current Weather
+```
+
+Current weather data includes:
+
+- Temperature
+- Humidity
+- Weather code
+- Wind speed
+- Local time
+
+## Currency
+
+The Currency tool retrieves current exchange rates between supported currencies.
+
+Example:
+
+```text
+User: دلار به یورو چنده؟
+9Jarvis: هر ۱ دلار آمریکا حدود ۰.۸۸ یورو است.
+```
+
+Input format:
+
+```json
+{
+  "from": "USD",
+  "to": "EUR"
+}
+```
+
+The tool returns structured data containing:
+
+```text
+Source currency
+Target currency
+Exchange rate
+Date
 ```
 
 ---
@@ -233,7 +375,7 @@ User: یک عدد تصادفی بده
 
 The Agent is responsible for deciding what action 9Jarvis should take.
 
-Unlike a simple Tool Detector, the Agent can repeatedly evaluate the current state of a request.
+Unlike a simple Tool Detector, the Agent can evaluate the current state of a request and decide whether another tool execution is required.
 
 Basic flow:
 
@@ -248,12 +390,12 @@ Tool Result
  ↓
 Agent Decision
  ↓
-Finish
+Tool / Finish
 ```
 
-The Agent currently supports two actions:
+The Agent currently supports two actions.
 
-### Execute Tool
+## Execute Tool
 
 ```json
 {
@@ -263,7 +405,7 @@ The Agent currently supports two actions:
 }
 ```
 
-### Finish
+## Finish
 
 ```json
 {
@@ -278,7 +420,47 @@ MAX_STEPS = 5
 MAX_RETRIES = 2
 ```
 
-This prevents infinite loops and allows recovery from occasional empty or invalid model responses.
+These protections help prevent:
+
+- Infinite loops
+- Repeated tool execution
+- Invalid action responses
+- Empty model responses
+- Uncontrolled execution
+
+### Agent History
+
+Each executed tool is recorded in the Agent history:
+
+```text
+Step
+Tool
+Input
+Success
+Result
+```
+
+This allows the Agent and final response generator to know what has already happened.
+
+A successful tool result should be treated as authoritative.
+
+For example:
+
+```text
+User
+ ↓
+Agent
+ ↓
+Currency Tool
+ ↓
+USD → EUR
+ ↓
+Rate: 0.88067
+ ↓
+Final Response
+```
+
+The final response layer receives the actual tool result and converts it into a natural user-facing response.
 
 ---
 
@@ -288,12 +470,12 @@ The current architecture is:
 
 ```text
 ┌──────────────────┐
-│      User        │
+│       User       │
 └────────┬─────────┘
          ↓
 ┌──────────────────┐
 │     main.js      │
-│  Application Core│
+│ Application Core │
 └────────┬─────────┘
          ↓
 ┌──────────────────┐
@@ -321,18 +503,30 @@ The current architecture is:
 └────────┬─────────┘
          ↓
 ┌──────────────────┐
-│      User        │
+│       User       │
 └──────────────────┘
 ```
 
 The important separation is:
 
 ```text
-Agent = decides what to do
+Memory
+→ stores and retrieves information
 
-Tool = performs the action
+Agent
+→ decides what action should happen
 
-Final LLM = turns the result into a natural response
+Tools
+→ perform external or computational actions
+
+Tool Results
+→ provide real execution data
+
+Final LLM
+→ turns results into natural language
+
+main.js
+→ coordinates the application
 ```
 
 ---
@@ -368,7 +562,7 @@ Final LLM = turns the result into a natural response
 └── opencode.cmd
 ```
 
-Temporary test files such as `testAgent.js` are not part of the production architecture.
+Temporary test files are not part of the production architecture.
 
 ---
 
@@ -409,6 +603,10 @@ Add your OpenRouter API key to `.env`:
 OPENROUTER_API_KEY=your_api_key_here
 ```
 
+If using external tools that require API keys, configure them in `.env` as documented by the project.
+
+Never commit `.env` to GitHub.
+
 ---
 
 # 💬 Usage
@@ -426,11 +624,11 @@ You should see:
 💬 Type your message. Type 'exit' to quit.
 ```
 
-Example:
+Examples:
 
 ```text
 You: ساعت چنده؟
-9Jarvis: ساعت ۱:۵۵:۱۳ است.
+9Jarvis: ساعت ۱۶:۱۷:۵۷ است.
 ```
 
 ```text
@@ -441,6 +639,11 @@ You: 23 * 17
 ```text
 You: اسم من چیه؟
 9Jarvis: اسم شما سینا است.
+```
+
+```text
+You: دلار به یورو چنده؟
+9Jarvis: هر ۱ دلار آمریکا حدود ۰.۸۸ یورو است.
 ```
 
 Exit:
@@ -457,53 +660,65 @@ You: exit
 
 Each major component is tested independently before integration.
 
-### Memory
+## Memory
 
 Tested capabilities:
 
 ```text
-Memory saving
-Memory retrieval
-Memory queries
-Multiple memory values
+Memory saving              ✅
+Memory retrieval           ✅
+Memory queries             ✅
+Multiple memory values     ✅
+Duplicate prevention       ✅
+User memory                ✅
+Project memory             ✅
+Relevant context retrieval ✅
 ```
 
-### Tools
+## Tools
 
 Tested:
 
 ```text
-calculator ✅
-time ✅
-date ✅
-random ✅
+calculator   ✅
+time         ✅
+date         ✅
+random       ✅
+web_search   ✅
+geocode      ✅
+weather      ✅
+currency     ✅
 ```
 
-### Agent
+## Agent
 
 Tested:
 
 ```text
-Tool selection ✅
-Tool execution ✅
-History tracking ✅
-Finish detection ✅
-Retry handling ✅
-Maximum step protection ✅
+Tool selection                  ✅
+Tool execution                  ✅
+History tracking                ✅
+Finish detection                ✅
+Retry handling                  ✅
+Maximum step protection         ✅
+Repeated execution prevention   ✅
+Tool result handling            ✅
 ```
 
-### Integrated System
+## Integrated System
 
-The final integrated CLI has been tested with:
+The integrated CLI has been tested with:
 
 ```text
 ساعت چنده؟
 23 * 17
 اسم من چیه؟
 یک عدد تصادفی بده
+آب و هوای تبریز چطوره؟
+دلار به یورو چنده؟
 ```
 
-All four paths currently work correctly.
+The current Tool and Agent pipeline is operational.
 
 ---
 
@@ -533,33 +748,42 @@ All four paths currently work correctly.
 - [x] Memory detection
 - [x] Memory querying
 - [x] Multiple values
+- [x] Duplicate prevention
 - [x] User memory
 - [x] Project memory
 - [x] Memory context
+- [x] Relevant memory retrieval
 
 ## Phase 04 — Tools
 
-- [x] Tool detection
+- [x] Tool architecture
 - [x] Tool validation
 - [x] Tool execution
 - [x] Calculator
 - [x] Time
 - [x] Date
 - [x] Random
+- [x] Web Search
+- [x] Geocoding
+- [x] Weather
+- [x] Currency
 
 ## Phase 05 — Agent
 
-- [x] Agent Loop
+- [x] Agent loop
 - [x] Tool selection
 - [x] Tool execution
 - [x] Tool history
 - [x] Finish action
 - [x] Retry handling
 - [x] Loop protection
+- [x] Successful tool result handling
+- [x] Repeated execution prevention
 - [ ] Reliable multi-step tasks
 - [ ] Better planning
 - [ ] Better context handling
 - [ ] More advanced tool orchestration
+- [ ] Improved deterministic routing
 
 ## Phase 06 — Computer Control
 
@@ -611,12 +835,20 @@ Build
  ↓
 Test
  ↓
+Inspect Output
+ ↓
 Verify
  ↓
 Commit
  ↓
 Push
+ ↓
+Update Documentation
 ```
+
+The project follows a strict incremental approach:
+
+> One Change → Test → Inspect Output → Next Change
 
 A new capability should not be added until the current layer is stable enough to support it.
 
@@ -652,11 +884,11 @@ Where practical, user memory and application data remain under the user's contro
 
 ### Simple Before Advanced
 
-The project prioritizes a working simple implementation before adding complexity.
+The project prioritizes a working simple implementation before adding unnecessary complexity.
 
 ### Replaceable Components
 
-Models, tools, and subsystems should be replaceable whenever possible.
+Models, tools, routing logic, and subsystems should be replaceable whenever possible.
 
 ---
 
@@ -664,19 +896,35 @@ Models, tools, and subsystems should be replaceable whenever possible.
 
 **Build a reliable Agent that can perform multi-step tasks using Memory, Context, and Tools.**
 
+The current architecture has reached:
+
+```text
+Memory
+   +
+Tools
+   ↓
+Agent
+   ↓
+Tool Execution
+   ↓
+Tool Results
+   ↓
+Final Response
+```
+
 The immediate next milestone is:
 
 ```text
 Single-step Agent
       ↓
-Multi-step Agent
+Reliable Multi-step Agent
       ↓
 Context-aware Agent
       ↓
 Reliable Personal Agent
 ```
 
-The long-term mission is to turn 9Jarvis into a modular personal AI assistant capable of understanding the user, remembering useful information, choosing the right tools, executing actions, and eventually interacting with the user's computer and environment.
+The long-term mission is to turn 9Jarvis into a modular personal AI assistant capable of understanding the user, remembering useful information, choosing the right tools, executing actions, handling multi-step tasks, and eventually interacting with the user's computer and environment.
 
 ---
 
@@ -685,7 +933,3 @@ The long-term mission is to turn 9Jarvis into a modular personal AI assistant ca
 This project is currently developed as a personal project.
 
 License information may be added as the project evolves.
-
-```
-
-```

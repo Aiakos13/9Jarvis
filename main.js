@@ -36,6 +36,7 @@ Tools and Agent:
 - Treat successful tool results as authoritative.
 - Never ignore a successful tool result.
 - Never invent a different value from a tool result.
+- Vision Analysis from a successful screenshot is also authoritative for visible screen content.
 - Do not explain internal Agent steps unless the user asks.
 
 Response style:
@@ -53,14 +54,17 @@ Tool execution history:
 
 ${agentHistory
   .map(
-    (item, index) =>
-      `Step ${index + 1}
+    (item, index) => `
+Step ${index + 1}
 Tool: ${item.tool}
 Input: ${JSON.stringify(item.input)}
 Success: ${item.success}
-Result: ${JSON.stringify(item.result)}`,
+Result: ${JSON.stringify(item.result)}
+Vision Analysis: ${JSON.stringify(item.vision || null)}
+Vision Error: ${JSON.stringify(item.visionError || null)}
+`,
   )
-  .join("\n\n")}
+  .join("\n")}
 `
     : "No tools were executed.";
 
@@ -101,6 +105,17 @@ TOOL RESULTS:
 - NEVER say that the information could not be retrieved when a successful result exists.
 - NEVER invent information that is not present in the tool result.
 - Do not mention internal Agent steps, tool execution history, or implementation details.
+
+SCREENSHOT / VISION:
+- A successful screenshot may contain a "Vision Analysis" field.
+- Vision Analysis is the actual description of the screenshot produced by the vision model.
+- If the user asks what is visible on the screen, you MUST use the Vision Analysis.
+- Treat successful Vision Analysis as authoritative for visible screen content.
+- Do not say that the screen could not be viewed when a successful Vision Analysis exists.
+- Do not say that screenshot information is unavailable when a successful Vision Analysis exists.
+- Do not invent visual details that are not present in Vision Analysis.
+- Answer naturally based on the Vision Analysis.
+- Do not mention the vision model, screenshot processing, Agent, or internal implementation unless the user explicitly asks.
 
 CALCULATOR:
 - Use the exact result returned by the calculator.
@@ -183,7 +198,9 @@ async function askUser(userInput) {
       try {
         memoryData = JSON.parse(detectedMemory);
       } catch {
-        memoryData = { shouldRemember: false };
+        memoryData = {
+          shouldRemember: false,
+        };
       }
 
       if (memoryData.shouldRemember) {
@@ -240,10 +257,9 @@ async function askUser(userInput) {
       console.log(`⚠️ Agent error: ${agentResult.error}`);
     }
 
-    const agentHistory =
-      agentResult.success && Array.isArray(agentResult.history)
-        ? agentResult.history
-        : [];
+    const agentHistory = Array.isArray(agentResult.history)
+      ? agentResult.history
+      : [];
 
     // ========================================
     // 4. Generate final response

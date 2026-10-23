@@ -318,31 +318,35 @@ async function getCurrencyRate(input) {
   }
 }
 
-function openApp(app) {
+async function openApp(app) {
+  if (typeof app !== "string" || !app.trim()) {
+    return {
+      success: false,
+      error: "Invalid application name",
+    };
+  }
+
+  const cleanApp = app.trim();
+
   try {
-    if (typeof app !== "string" || !app.trim()) {
-      return {
-        success: false,
-        error: "Invalid application name",
-      };
-    }
-
-    const cleanApp = app.trim();
-
-    exec(`start "" "${cleanApp}"`, (error) => {
-      if (error) {
-        console.error("Open app error:", error.message);
-      }
+    await new Promise((resolve, reject) => {
+      exec(`start "" "${cleanApp}"`, (error) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
     });
 
     return {
       success: true,
       result: `${cleanApp} opened`,
     };
-  } catch {
+  } catch (error) {
     return {
       success: false,
-      error: "Failed to open application",
+      error: error.message || "Failed to open application",
     };
   }
 }
@@ -394,181 +398,258 @@ function openUrl(url) {
   }
 }
 
-function closeApp(app) {
+async function closeApp(app) {
+  if (typeof app !== "string" || !app.trim()) {
+    return {
+      success: false,
+      error: "Invalid application name",
+    };
+  }
+
+  const cleanApp = app.trim().replace(/\.exe$/i, "");
+
+  if (!/^[a-zA-Z0-9_.-]+$/.test(cleanApp)) {
+    return {
+      success: false,
+      error: "Invalid application name",
+    };
+  }
+
   try {
-    if (typeof app !== "string" || !app.trim()) {
-      return {
-        success: false,
-        error: "Invalid application name",
-      };
-    }
-
-    const cleanApp = app.trim();
-
-    exec(`taskkill /IM "${cleanApp}.exe" /F`, (error) => {
-      if (error) {
-        console.error("Close app error:", error.message);
-      }
+    await new Promise((resolve, reject) => {
+      exec(`taskkill /IM "${cleanApp}.exe" /F`, (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(stderr?.trim() || error.message));
+        } else {
+          resolve(stdout);
+        }
+      });
     });
 
     return {
       success: true,
       result: `${cleanApp} closed`,
     };
-  } catch {
+  } catch (error) {
     return {
       success: false,
-      error: "Failed to close application",
+      error: error.message || "Failed to close application",
     };
   }
 }
 
-function pressKey(key) {
-  try {
-    if (typeof key !== "string" || !key.trim()) {
-      return {
-        success: false,
-        error: "Invalid key",
-      };
-    }
-
-    const normalizedKey = key.trim().toUpperCase();
-
-    const keyMap = {
-      ENTER: "{ENTER}",
-      ESC: "{ESC}",
-      ESCAPE: "{ESC}",
-      TAB: "{TAB}",
-      SPACE: " ",
-      BACKSPACE: "{BACKSPACE}",
-      DELETE: "{DELETE}",
-      UP: "{UP}",
-      DOWN: "{DOWN}",
-      LEFT: "{LEFT}",
-      RIGHT: "{RIGHT}",
-      HOME: "{HOME}",
-      END: "{END}",
-      PGUP: "{PGUP}",
-      PGDN: "{PGDN}",
+async function pressKey(key) {
+  if (typeof key !== "string" || !key.trim()) {
+    return {
+      success: false,
+      error: "Invalid key",
     };
+  }
 
-    if (!keyMap[normalizedKey]) {
-      return {
-        success: false,
-        error: `Unsupported key: ${key}`,
-      };
-    }
+  const normalizedKey = key.trim().toUpperCase();
 
-    execFile(
-      "powershell.exe",
-      [
-        "-NoProfile",
-        "-Command",
-        `$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys('${keyMap[normalizedKey]}')`,
-      ],
-      (error) => {
-        if (error) {
-          console.error("Press key error:", error.message);
-        }
-      },
-    );
+  const keyMap = {
+    ENTER: "{ENTER}",
+    ESC: "{ESC}",
+    ESCAPE: "{ESC}",
+    TAB: "{TAB}",
+    SPACE: " ",
+    BACKSPACE: "{BACKSPACE}",
+    DELETE: "{DELETE}",
+    UP: "{UP}",
+    DOWN: "{DOWN}",
+    LEFT: "{LEFT}",
+    RIGHT: "{RIGHT}",
+    HOME: "{HOME}",
+    END: "{END}",
+    PGUP: "{PGUP}",
+    PGDN: "{PGDN}",
+  };
+
+  if (!keyMap[normalizedKey]) {
+    return {
+      success: false,
+      error: `Unsupported key: ${key}`,
+    };
+  }
+
+  try {
+    await new Promise((resolve, reject) => {
+      execFile(
+        "powershell.exe",
+        [
+          "-NoProfile",
+          "-Command",
+          `$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys('${keyMap[normalizedKey]}')`,
+        ],
+        (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        },
+      );
+    });
 
     return {
       success: true,
       result: `${normalizedKey} pressed`,
     };
-  } catch {
+  } catch (error) {
     return {
       success: false,
-      error: "Failed to press key",
+      error: error.message || "Failed to press key",
     };
   }
 }
 
-function typeText(text) {
-  try {
-    if (typeof text !== "string" || !text) {
-      return {
-        success: false,
-        error: "Invalid text",
-      };
-    }
-
-    const escapedText = text.replace(/\\/g, "\\\\").replace(/'/g, "''");
-
-    execFile(
-      "powershell.exe",
-      [
-        "-NoProfile",
-        "-Command",
-        `$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys('${escapedText}')`,
-      ],
-      (error) => {
-        if (error) {
-          console.error("Type text error:", error.message);
-        }
-      },
-    );
-
-    return {
-      success: true,
-      result: "Text typed",
-    };
-  } catch {
+async function typeText(text) {
+  if (typeof text !== "string" || !text) {
     return {
       success: false,
-      error: "Failed to type text",
+      error: "Invalid text",
+    };
+  }
+
+  const encodedText = Buffer.from(text, "utf16le").toString("base64");
+
+  const command = [
+    "$ErrorActionPreference = 'Stop'",
+    "Add-Type -AssemblyName UIAutomationClient",
+    `$bytes = [Convert]::FromBase64String('${encodedText}')`,
+    "$text = [System.Text.Encoding]::Unicode.GetString($bytes)",
+    "$process = Get-Process -Name 'notepad' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1",
+    "if (-not $process) { throw 'Notepad window not found' }",
+    "$root = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)",
+    "$condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'Text editor')",
+    "$editor = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)",
+    "if (-not $editor) { throw 'Text editor not found' }",
+    "$pattern = $null",
+    "if (-not $editor.TryGetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern, [ref]$pattern)) { throw 'ValuePattern unavailable' }",
+    "$pattern.SetValue($text)",
+  ].join("; ");
+
+  try {
+    await new Promise((resolve, reject) => {
+      execFile(
+        "powershell.exe",
+        ["-NoProfile", "-Command", command],
+        (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        },
+      );
+    });
+
+    return { success: true, result: "Text written through UI Automation" };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message || "Failed to write text",
     };
   }
 }
 
-function focusApp(app) {
+async function focusApp(app) {
+  if (typeof app !== "string" || !app.trim()) {
+    return {
+      success: false,
+      error: "Invalid application name",
+    };
+  }
+
+  const cleanApp = app.trim();
+
+  const escapedApp = cleanApp.replace(/'/g, "''");
+  const processName = escapedApp.replace(/\.exe$/i, "");
+
+  const command = `
+$processes = Get-Process -Name '${processName}' -ErrorAction SilentlyContinue
+if (-not $processes) {
+  Write-Error 'Application process not found'
+  exit 1
+}
+
+$wshell = New-Object -ComObject WScript.Shell
+$activated = $false
+
+foreach ($process in $processes) {
+  if ($process.MainWindowHandle -ne 0 -and $wshell.AppActivate($process.Id)) {
+    $activated = $true
+    break
+  }
+}
+
+if (-not $activated) {
+  Write-Error 'Could not activate application window'
+  exit 1
+}
+`;
+
   try {
-    if (typeof app !== "string" || !app.trim()) {
-      return {
-        success: false,
-        error: "Invalid application name",
-      };
-    }
-
-    const cleanApp = app.trim();
-
-    execFile(
-      "powershell.exe",
-      [
-        "-NoProfile",
-        "-Command",
-        `$wshell = New-Object -ComObject WScript.Shell; if ($wshell.AppActivate('${cleanApp}')) { exit 0 } else { exit 1 }`,
-      ],
-      (error) => {
-        if (error) {
-          console.error("Focus app error:", error.message);
-        }
-      },
-    );
+    await new Promise((resolve, reject) => {
+      execFile(
+        "powershell.exe",
+        ["-NoProfile", "-Command", command],
+        (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        },
+      );
+    });
 
     return {
       success: true,
       result: `${cleanApp} focused`,
     };
-  } catch {
+  } catch (error) {
     return {
       success: false,
-      error: "Failed to focus application",
+      error:
+        error.stderr?.trim() || error.message || "Failed to focus application",
     };
   }
 }
 
-function openDefaultBrowser(url = "") {
-  try {
-    const cleanUrl = typeof url === "string" ? url.trim() : "";
+async function openDefaultBrowser(url = "") {
+  const cleanUrl = typeof url === "string" ? url.trim() : "";
 
-    const command = cleanUrl ? `start "" "${cleanUrl}"` : `start ""`;
+  if (cleanUrl) {
+    try {
+      const parsedUrl = new URL(cleanUrl);
 
-    exec(command, (error) => {
-      if (error) {
-        console.error("Open default browser error:", error.message);
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        return {
+          success: false,
+          error: "Invalid URL protocol",
+        };
       }
+    } catch {
+      return {
+        success: false,
+        error: "Invalid URL",
+      };
+    }
+  }
+
+  const command = cleanUrl ? `start "" "${cleanUrl}"` : `start ""`;
+
+  try {
+    await new Promise((resolve, reject) => {
+      exec(command, (error) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
     });
 
     return {
@@ -577,89 +658,102 @@ function openDefaultBrowser(url = "") {
         ? `${cleanUrl} opened in default browser`
         : "Default browser opened",
     };
-  } catch {
+  } catch (error) {
     return {
       success: false,
-      error: "Failed to open default browser",
+      error: error.message || "Failed to open default browser",
     };
   }
 }
 
-function hotkey(keys) {
-  try {
-    if (typeof keys !== "string" || !keys.trim()) {
-      return {
-        success: false,
-        error: "Invalid hotkey",
-      };
-    }
-
-    const parts = keys
-      .split("+")
-      .map((key) => key.trim().toUpperCase())
-      .filter(Boolean);
-
-    if (parts.length < 2) {
-      return {
-        success: false,
-        error: "Hotkey must contain at least two keys",
-      };
-    }
-
-    const keyMap = {
-      CTRL: "^",
-      CONTROL: "^",
-      ALT: "%",
-      SHIFT: "+",
-      WIN: "{LWIN}",
-      WINDOWS: "{LWIN}",
-      ENTER: "{ENTER}",
-      ESC: "{ESC}",
-      TAB: "{TAB}",
-      SPACE: " ",
-      BACKSPACE: "{BACKSPACE}",
-      DELETE: "{DELETE}",
-      UP: "{UP}",
-      DOWN: "{DOWN}",
-      LEFT: "{LEFT}",
-      RIGHT: "{RIGHT}",
-      HOME: "{HOME}",
-      END: "{END}",
-      PGUP: "{PGUP}",
-      PGDN: "{PGDN}",
+async function hotkey(keys) {
+  if (typeof keys !== "string" || !keys.trim()) {
+    return {
+      success: false,
+      error: "Invalid hotkey",
     };
+  }
 
-    const convertedKeys = parts.map((key) => {
-      if (key.length === 1) {
-        return key.toLowerCase();
-      }
+  const parts = keys
+    .split("+")
+    .map((key) => key.trim().toUpperCase())
+    .filter(Boolean);
 
-      if (keyMap[key]) {
-        return keyMap[key];
-      }
+  if (parts.length < 2) {
+    return {
+      success: false,
+      error: "Hotkey must contain at least two keys",
+    };
+  }
 
-      if (/^F([1-9]|1[0-2])$/.test(key)) {
-        return `{${key}}`;
-      }
+  const keyMap = {
+    CTRL: "^",
+    CONTROL: "^",
+    ALT: "%",
+    SHIFT: "+",
+    WIN: "{LWIN}",
+    WINDOWS: "{LWIN}",
+    ENTER: "{ENTER}",
+    ESC: "{ESC}",
+    TAB: "{TAB}",
+    SPACE: " ",
+    BACKSPACE: "{BACKSPACE}",
+    DELETE: "{DELETE}",
+    UP: "{UP}",
+    DOWN: "{DOWN}",
+    LEFT: "{LEFT}",
+    RIGHT: "{RIGHT}",
+    HOME: "{HOME}",
+    END: "{END}",
+    PGUP: "{PGUP}",
+    PGDN: "{PGDN}",
+  };
 
-      throw new Error(`Unsupported key: ${key}`);
-    });
+  let command;
 
-    const command = convertedKeys.join("");
-
-    execFile(
-      "powershell.exe",
-      [
-        "-NoProfile",
-        "-Command",
-        `$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys('${command}')`,
-      ],
-      (error) => {
-        if (error) {
-          console.error("Hotkey error:", error.message);
+  try {
+    command = parts
+      .map((key) => {
+        if (key.length === 1) {
+          return key.toLowerCase();
         }
-      },
-    );
+
+        if (keyMap[key]) {
+          return keyMap[key];
+        }
+
+        if (/^F([1-9]|1[0-2])$/.test(key)) {
+          return `{${key}}`;
+        }
+
+        throw new Error(`Unsupported key: ${key}`);
+      })
+      .join("");
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message || "Failed to press hotkey",
+    };
+  }
+
+  try {
+    await new Promise((resolve, reject) => {
+      execFile(
+        "powershell.exe",
+        [
+          "-NoProfile",
+          "-Command",
+          `$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys('${command}')`,
+        ],
+        (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        },
+      );
+    });
 
     return {
       success: true,
@@ -745,58 +839,52 @@ function validateScreenCoordinates(x, y, screen) {
   );
 }
 
-function mouseClick(input) {
-  try {
-    if (!input || typeof input !== "object") {
-      return {
-        success: false,
-        error: "Invalid mouse click input",
-      };
-    }
+async function mouseClick(input) {
+  if (!input || typeof input !== "object") {
+    return {
+      success: false,
+      error: "Invalid mouse click input",
+    };
+  }
 
-    const parsedX = Number(input.x);
-    const parsedY = Number(input.y);
+  const parsedX = Number(input.x);
+  const parsedY = Number(input.y);
 
-    const normalizedButton = String(input.button || "left")
-      .trim()
-      .toLowerCase();
+  const normalizedButton = String(input.button || "left")
+    .trim()
+    .toLowerCase();
 
-    if (!Number.isInteger(parsedX) || !Number.isInteger(parsedY)) {
-      return {
-        success: false,
-        error: "Invalid coordinates",
-      };
-    }
+  if (!Number.isInteger(parsedX) || !Number.isInteger(parsedY)) {
+    return {
+      success: false,
+      error: "Invalid coordinates",
+    };
+  }
 
-    if (!["left", "right"].includes(normalizedButton)) {
-      return {
-        success: false,
-        error: "Unsupported mouse button",
-      };
-    }
+  if (!["left", "right"].includes(normalizedButton)) {
+    return {
+      success: false,
+      error: "Unsupported mouse button",
+    };
+  }
 
-    const screen = getPrimaryScreenBounds();
+  const screen = getPrimaryScreenBounds();
 
-    if (!validateScreenCoordinates(parsedX, parsedY, screen)) {
-      return {
-        success: false,
-        error: `Coordinates are outside the primary screen: (${parsedX}, ${parsedY})`,
-      };
-    }
+  if (!validateScreenCoordinates(parsedX, parsedY, screen)) {
+    return {
+      success: false,
+      error: `Coordinates are outside the primary screen: (${parsedX}, ${parsedY})`,
+    };
+  }
 
-    execFile(
-      "powershell.exe",
-      [
-        "-NoProfile",
-        "-Command",
-        `
+  const command = `
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 
 public class MouseControl {
     [DllImport("user32.dll")]
-    public static extern void SetCursorPos(int x, int y);
+    public static extern bool SetCursorPos(int x, int y);
 
     [DllImport("user32.dll")]
     public static extern void mouse_event(
@@ -807,55 +895,36 @@ public class MouseControl {
         UIntPtr extraInfo
     );
 }
-'@;
+'@
 
-[MouseControl]::SetCursorPos(
-    ${parsedX},
-    ${parsedY}
-);
+if (-not [MouseControl]::SetCursorPos(${parsedX}, ${parsedY})) {
+    throw 'Failed to move cursor'
+}
 
 if ("${normalizedButton}" -eq "left") {
-    [MouseControl]::mouse_event(
-        0x0002,
-        0,
-        0,
-        0,
-        [UIntPtr]::Zero
-    );
-
-    [MouseControl]::mouse_event(
-        0x0004,
-        0,
-        0,
-        0,
-        [UIntPtr]::Zero
-    );
+    [MouseControl]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
+    [MouseControl]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
 }
 else {
-    [MouseControl]::mouse_event(
-        0x0008,
-        0,
-        0,
-        0,
-        [UIntPtr]::Zero
-    );
-
-    [MouseControl]::mouse_event(
-        0x0010,
-        0,
-        0,
-        0,
-        [UIntPtr]::Zero
-    );
+    [MouseControl]::mouse_event(0x0008, 0, 0, 0, [UIntPtr]::Zero)
+    [MouseControl]::mouse_event(0x0010, 0, 0, 0, [UIntPtr]::Zero)
 }
-        `,
-      ],
-      (error) => {
-        if (error) {
-          console.error("Mouse click error:", error.message);
-        }
-      },
-    );
+`;
+
+  try {
+    await new Promise((resolve, reject) => {
+      execFile(
+        "powershell.exe",
+        ["-NoProfile", "-Command", command],
+        (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        },
+      );
+    });
 
     return {
       success: true,
@@ -864,67 +933,68 @@ else {
   } catch (error) {
     return {
       success: false,
-      error: error.message || "Failed to click mouse",
+      error: error.stderr?.trim() || error.message || "Failed to click mouse",
     };
   }
 }
 
-function mouseMove(input) {
-  try {
-    if (!input || typeof input !== "object") {
-      return {
-        success: false,
-        error: "Invalid mouse move input",
-      };
-    }
+async function mouseMove(input) {
+  if (!input || typeof input !== "object") {
+    return {
+      success: false,
+      error: "Invalid mouse move input",
+    };
+  }
 
-    const parsedX = Number(input.x);
-    const parsedY = Number(input.y);
+  const parsedX = Number(input.x);
+  const parsedY = Number(input.y);
 
-    if (!Number.isInteger(parsedX) || !Number.isInteger(parsedY)) {
-      return {
-        success: false,
-        error: "Invalid coordinates",
-      };
-    }
+  if (!Number.isInteger(parsedX) || !Number.isInteger(parsedY)) {
+    return {
+      success: false,
+      error: "Invalid coordinates",
+    };
+  }
 
-    const screen = getPrimaryScreenBounds();
+  const screen = getPrimaryScreenBounds();
 
-    if (!validateScreenCoordinates(parsedX, parsedY, screen)) {
-      return {
-        success: false,
-        error: `Coordinates are outside the primary screen: (${parsedX}, ${parsedY})`,
-      };
-    }
+  if (!validateScreenCoordinates(parsedX, parsedY, screen)) {
+    return {
+      success: false,
+      error: `Coordinates are outside the primary screen: (${parsedX}, ${parsedY})`,
+    };
+  }
 
-    execFile(
-      "powershell.exe",
-      [
-        "-NoProfile",
-        "-Command",
-        `
+  const command = `
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 
 public class MouseMoveControl {
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", SetLastError = true)]
     public static extern bool SetCursorPos(int x, int y);
 }
-'@;
+'@
 
-[MouseMoveControl]::SetCursorPos(
-    ${parsedX},
-    ${parsedY}
-);
-        `,
-      ],
-      (error) => {
-        if (error) {
-          console.error("Mouse move error:", error.message);
-        }
-      },
-    );
+if (-not [MouseMoveControl]::SetCursorPos(${parsedX}, ${parsedY})) {
+    throw "SetCursorPos failed"
+}
+`;
+
+  try {
+    await new Promise((resolve, reject) => {
+      execFile(
+        "powershell.exe",
+        ["-NoProfile", "-Command", command],
+        (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        },
+      );
+    });
 
     return {
       success: true,
@@ -933,110 +1003,78 @@ public class MouseMoveControl {
   } catch (error) {
     return {
       success: false,
-      error: error.message || "Failed to move mouse",
+      error: error.stderr?.trim() || error.message || "Failed to move mouse",
     };
   }
 }
 
-function mouseDoubleClick(input) {
-  try {
-    if (!input || typeof input !== "object") {
-      return {
-        success: false,
-        error: "Invalid mouse double click input",
-      };
-    }
+async function mouseDoubleClick(input) {
+  if (!input || typeof input !== "object") {
+    return {
+      success: false,
+      error: "Invalid mouse double click input",
+    };
+  }
 
-    const parsedX = Number(input.x);
-    const parsedY = Number(input.y);
+  const parsedX = Number(input.x);
+  const parsedY = Number(input.y);
 
-    if (!Number.isInteger(parsedX) || !Number.isInteger(parsedY)) {
-      return {
-        success: false,
-        error: "Invalid coordinates",
-      };
-    }
+  if (!Number.isInteger(parsedX) || !Number.isInteger(parsedY)) {
+    return {
+      success: false,
+      error: "Invalid coordinates",
+    };
+  }
 
-    const screen = getPrimaryScreenBounds();
+  const screen = getPrimaryScreenBounds();
 
-    if (!validateScreenCoordinates(parsedX, parsedY, screen)) {
-      return {
-        success: false,
-        error: `Coordinates are outside the primary screen: (${parsedX}, ${parsedY})`,
-      };
-    }
+  if (!validateScreenCoordinates(parsedX, parsedY, screen)) {
+    return {
+      success: false,
+      error: `Coordinates are outside the primary screen: (${parsedX}, ${parsedY})`,
+    };
+  }
 
-    execFile(
-      "powershell.exe",
-      [
-        "-NoProfile",
-        "-Command",
-        `
+  const command = `
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 
 public class MouseDoubleClickControl {
-    [DllImport("user32.dll")]
-    public static extern void SetCursorPos(int x, int y);
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetCursorPos(int x, int y);
 
     [DllImport("user32.dll")]
     public static extern void mouse_event(
-        uint flags,
-        uint dx,
-        uint dy,
-        uint data,
-        UIntPtr extraInfo
+        uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo
     );
 }
-'@;
+'@
 
-[MouseDoubleClickControl]::SetCursorPos(
-    ${parsedX},
-    ${parsedY}
-);
+if (-not [MouseDoubleClickControl]::SetCursorPos(${parsedX}, ${parsedY})) {
+    throw "SetCursorPos failed"
+}
 
-[MouseDoubleClickControl]::mouse_event(
-    0x0002,
-    0,
-    0,
-    0,
-    [UIntPtr]::Zero
-);
+[MouseDoubleClickControl]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
+[MouseDoubleClickControl]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
 
-[MouseDoubleClickControl]::mouse_event(
-    0x0004,
-    0,
-    0,
-    0,
-    [UIntPtr]::Zero
-);
+Start-Sleep -Milliseconds 100
 
-Start-Sleep -Milliseconds 100;
+[MouseDoubleClickControl]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
+[MouseDoubleClickControl]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
+`;
 
-[MouseDoubleClickControl]::mouse_event(
-    0x0002,
-    0,
-    0,
-    0,
-    [UIntPtr]::Zero
-);
-
-[MouseDoubleClickControl]::mouse_event(
-    0x0004,
-    0,
-    0,
-    0,
-    [UIntPtr]::Zero
-);
-        `,
-      ],
-      (error) => {
-        if (error) {
-          console.error("Mouse double click error:", error.message);
-        }
-      },
-    );
+  try {
+    await new Promise((resolve, reject) => {
+      execFile(
+        "powershell.exe",
+        ["-NoProfile", "-Command", command],
+        (error) => {
+          if (error) reject(error);
+          else resolve();
+        },
+      );
+    });
 
     return {
       success: true,
@@ -1045,30 +1083,25 @@ Start-Sleep -Milliseconds 100;
   } catch (error) {
     return {
       success: false,
-      error: error.message || "Failed to double click",
+      error: error.stderr?.trim() || error.message || "Failed to double click",
     };
   }
 }
-function scroll(input) {
-  try {
-    const amount = Number(input);
 
-    if (!Number.isInteger(amount) || amount === 0) {
-      return {
-        success: false,
-        error: "Invalid scroll amount",
-      };
-    }
+async function scroll(input) {
+  const amount = Number(input);
 
-    const scrollAmount =
-      amount > 0 ? Math.min(amount, 20) : Math.max(amount, -20);
+  if (!Number.isInteger(amount) || amount === 0) {
+    return {
+      success: false,
+      error: "Invalid scroll amount",
+    };
+  }
 
-    execFile(
-      "powershell.exe",
-      [
-        "-NoProfile",
-        "-Command",
-        `
+  const scrollAmount =
+    amount > 0 ? Math.min(amount, 20) : Math.max(amount, -20);
+
+  const command = `
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
@@ -1083,23 +1116,23 @@ public class MouseScrollControl {
         UIntPtr extraInfo
     );
 }
-'@;
+'@
 
 [MouseScrollControl]::mouse_event(
-    0x0800,
-    0,
-    0,
-    ${scrollAmount * 120},
+    [uint32]0x0800,
+    [uint32]0,
+    [uint32]0,
+    [int]${scrollAmount * 120},
     [UIntPtr]::Zero
-);
-        `,
-      ],
-      (error) => {
-        if (error) {
-          console.error("Mouse scroll error:", error.message);
-        }
-      },
-    );
+)
+`;
+
+  const { execFile } = require("child_process");
+  const { promisify } = require("util");
+  const execFileAsync = promisify(execFile);
+
+  try {
+    await execFileAsync("powershell.exe", ["-NoProfile", "-Command", command]);
 
     return {
       success: true,
@@ -1108,10 +1141,11 @@ public class MouseScrollControl {
   } catch (error) {
     return {
       success: false,
-      error: error.message || "Failed to scroll",
+      error: error.stderr?.trim() || error.message || "Failed to scroll",
     };
   }
 }
+
 /* -------------------------------------------------------------------------- */
 /* SCREENSHOT                                                                 */
 /* -------------------------------------------------------------------------- */

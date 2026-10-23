@@ -1,0 +1,1144 @@
+[1mdiff --git a/tools.js b/tools.js[m
+[1mindex 09fd2aa..946670b 100644[m
+[1m--- a/tools.js[m
+[1m+++ b/tools.js[m
+[36m@@ -318,31 +318,35 @@[m [masync function getCurrencyRate(input) {[m
+   }[m
+ }[m
+ [m
+[31m-function openApp(app) {[m
+[31m-  try {[m
+[31m-    if (typeof app !== "string" || !app.trim()) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid application name",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32masync function openApp(app) {[m
+[32m+[m[32m  if (typeof app !== "string" || !app.trim()) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid application name",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    const cleanApp = app.trim();[m
+[32m+[m[32m  const cleanApp = app.trim();[m
+ [m
+[31m-    exec(`start "" "${cleanApp}"`, (error) => {[m
+[31m-      if (error) {[m
+[31m-        console.error("Open app error:", error.message);[m
+[31m-      }[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await new Promise((resolve, reject) => {[m
+[32m+[m[32m      exec(`start "" "${cleanApp}"`, (error) => {[m
+[32m+[m[32m        if (error) {[m
+[32m+[m[32m          reject(error);[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m          resolve();[m
+[32m+[m[32m        }[m
+[32m+[m[32m      });[m
+     });[m
+ [m
+     return {[m
+       success: true,[m
+       result: `${cleanApp} opened`,[m
+     };[m
+[31m-  } catch {[m
+[32m+[m[32m  } catch (error) {[m
+     return {[m
+       success: false,[m
+[31m-      error: "Failed to open application",[m
+[32m+[m[32m      error: error.message || "Failed to open application",[m
+     };[m
+   }[m
+ }[m
+[36m@@ -394,181 +398,258 @@[m [mfunction openUrl(url) {[m
+   }[m
+ }[m
+ [m
+[31m-function closeApp(app) {[m
+[31m-  try {[m
+[31m-    if (typeof app !== "string" || !app.trim()) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid application name",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32masync function closeApp(app) {[m
+[32m+[m[32m  if (typeof app !== "string" || !app.trim()) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid application name",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    const cleanApp = app.trim();[m
+[32m+[m[32m  const cleanApp = app.trim().replace(/\.exe$/i, "");[m
+ [m
+[31m-    exec(`taskkill /IM "${cleanApp}.exe" /F`, (error) => {[m
+[31m-      if (error) {[m
+[31m-        console.error("Close app error:", error.message);[m
+[31m-      }[m
+[32m+[m[32m  if (!/^[a-zA-Z0-9_.-]+$/.test(cleanApp)) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid application name",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await new Promise((resolve, reject) => {[m
+[32m+[m[32m      exec(`taskkill /IM "${cleanApp}.exe" /F`, (error, stdout, stderr) => {[m
+[32m+[m[32m        if (error) {[m
+[32m+[m[32m          reject(new Error(stderr?.trim() || error.message));[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m          resolve(stdout);[m
+[32m+[m[32m        }[m
+[32m+[m[32m      });[m
+     });[m
+ [m
+     return {[m
+       success: true,[m
+       result: `${cleanApp} closed`,[m
+     };[m
+[31m-  } catch {[m
+[32m+[m[32m  } catch (error) {[m
+     return {[m
+       success: false,[m
+[31m-      error: "Failed to close application",[m
+[32m+[m[32m      error: error.message || "Failed to close application",[m
+     };[m
+   }[m
+ }[m
+ [m
+[31m-function pressKey(key) {[m
+[31m-  try {[m
+[31m-    if (typeof key !== "string" || !key.trim()) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid key",[m
+[31m-      };[m
+[31m-    }[m
+[31m-[m
+[31m-    const normalizedKey = key.trim().toUpperCase();[m
+[31m-[m
+[31m-    const keyMap = {[m
+[31m-      ENTER: "{ENTER}",[m
+[31m-      ESC: "{ESC}",[m
+[31m-      ESCAPE: "{ESC}",[m
+[31m-      TAB: "{TAB}",[m
+[31m-      SPACE: " ",[m
+[31m-      BACKSPACE: "{BACKSPACE}",[m
+[31m-      DELETE: "{DELETE}",[m
+[31m-      UP: "{UP}",[m
+[31m-      DOWN: "{DOWN}",[m
+[31m-      LEFT: "{LEFT}",[m
+[31m-      RIGHT: "{RIGHT}",[m
+[31m-      HOME: "{HOME}",[m
+[31m-      END: "{END}",[m
+[31m-      PGUP: "{PGUP}",[m
+[31m-      PGDN: "{PGDN}",[m
+[32m+[m[32masync function pressKey(key) {[m
+[32m+[m[32m  if (typeof key !== "string" || !key.trim()) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid key",[m
+     };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    if (!keyMap[normalizedKey]) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: `Unsupported key: ${key}`,[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32m  const normalizedKey = key.trim().toUpperCase();[m
+[32m+[m
+[32m+[m[32m  const keyMap = {[m
+[32m+[m[32m    ENTER: "{ENTER}",[m
+[32m+[m[32m    ESC: "{ESC}",[m
+[32m+[m[32m    ESCAPE: "{ESC}",[m
+[32m+[m[32m    TAB: "{TAB}",[m
+[32m+[m[32m    SPACE: " ",[m
+[32m+[m[32m    BACKSPACE: "{BACKSPACE}",[m
+[32m+[m[32m    DELETE: "{DELETE}",[m
+[32m+[m[32m    UP: "{UP}",[m
+[32m+[m[32m    DOWN: "{DOWN}",[m
+[32m+[m[32m    LEFT: "{LEFT}",[m
+[32m+[m[32m    RIGHT: "{RIGHT}",[m
+[32m+[m[32m    HOME: "{HOME}",[m
+[32m+[m[32m    END: "{END}",[m
+[32m+[m[32m    PGUP: "{PGUP}",[m
+[32m+[m[32m    PGDN: "{PGDN}",[m
+[32m+[m[32m  };[m
+ [m
+[31m-    execFile([m
+[31m-      "powershell.exe",[m
+[31m-      [[m
+[31m-        "-NoProfile",[m
+[31m-        "-Command",[m
+[31m-        `$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys('${keyMap[normalizedKey]}')`,[m
+[31m-      ],[m
+[31m-      (error) => {[m
+[31m-        if (error) {[m
+[31m-          console.error("Press key error:", error.message);[m
+[31m-        }[m
+[31m-      },[m
+[31m-    );[m
+[32m+[m[32m  if (!keyMap[normalizedKey]) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: `Unsupported key: ${key}`,[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await new Promise((resolve, reject) => {[m
+[32m+[m[32m      execFile([m
+[32m+[m[32m        "powershell.exe",[m
+[32m+[m[32m        [[m
+[32m+[m[32m          "-NoProfile",[m
+[32m+[m[32m          "-Command",[m
+[32m+[m[32m          `$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys('${keyMap[normalizedKey]}')`,[m
+[32m+[m[32m        ],[m
+[32m+[m[32m        (error) => {[m
+[32m+[m[32m          if (error) {[m
+[32m+[m[32m            reject(error);[m
+[32m+[m[32m          } else {[m
+[32m+[m[32m            resolve();[m
+[32m+[m[32m          }[m
+[32m+[m[32m        },[m
+[32m+[m[32m      );[m
+[32m+[m[32m    });[m
+ [m
+     return {[m
+       success: true,[m
+       result: `${normalizedKey} pressed`,[m
+     };[m
+[31m-  } catch {[m
+[32m+[m[32m  } catch (error) {[m
+     return {[m
+       success: false,[m
+[31m-      error: "Failed to press key",[m
+[32m+[m[32m      error: error.message || "Failed to press key",[m
+     };[m
+   }[m
+ }[m
+ [m
+[31m-function typeText(text) {[m
+[31m-  try {[m
+[31m-    if (typeof text !== "string" || !text) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid text",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32masync function typeText(text) {[m
+[32m+[m[32m  if (typeof text !== "string" || !text) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid text",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    const escapedText = text.replace(/\\/g, "\\\\").replace(/'/g, "''");[m
+[32m+[m[32m  const encodedText = Buffer.from(text, "utf16le").toString("base64");[m
+[32m+[m
+[32m+[m[32m  const command = [[m
+[32m+[m[32m    "$ErrorActionPreference = 'Stop'",[m
+[32m+[m[32m    "Add-Type -AssemblyName UIAutomationClient",[m
+[32m+[m[32m    `$bytes = [Convert]::FromBase64String('${encodedText}')`,[m
+[32m+[m[32m    "$text = [System.Text.Encoding]::Unicode.GetString($bytes)",[m
+[32m+[m[32m    "$process = Get-Process -Name 'notepad' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1",[m
+[32m+[m[32m    "if (-not $process) { throw 'Notepad window not found' }",[m
+[32m+[m[32m    "$root = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)",[m
+[32m+[m[32m    "$condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'Text editor')",[m
+[32m+[m[32m    "$editor = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)",[m
+[32m+[m[32m    "if (-not $editor) { throw 'Text editor not found' }",[m
+[32m+[m[32m    "$pattern = $null",[m
+[32m+[m[32m    "if (-not $editor.TryGetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern, [ref]$pattern)) { throw 'ValuePattern unavailable' }",[m
+[32m+[m[32m    "$pattern.SetValue($text)",[m
+[32m+[m[32m  ].join("; ");[m
+ [m
+[31m-    execFile([m
+[31m-      "powershell.exe",[m
+[31m-      [[m
+[31m-        "-NoProfile",[m
+[31m-        "-Command",[m
+[31m-        `$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys('${escapedText}')`,[m
+[31m-      ],[m
+[31m-      (error) => {[m
+[31m-        if (error) {[m
+[31m-          console.error("Type text error:", error.message);[m
+[31m-        }[m
+[31m-      },[m
+[31m-    );[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await new Promise((resolve, reject) => {[m
+[32m+[m[32m      execFile([m
+[32m+[m[32m        "powershell.exe",[m
+[32m+[m[32m        ["-NoProfile", "-Command", command],[m
+[32m+[m[32m        (error) => {[m
+[32m+[m[32m          if (error) {[m
+[32m+[m[32m            reject(error);[m
+[32m+[m[32m          } else {[m
+[32m+[m[32m            resolve();[m
+[32m+[m[32m          }[m
+[32m+[m[32m        },[m
+[32m+[m[32m      );[m
+[32m+[m[32m    });[m
+ [m
+[32m+[m[32m    return { success: true, result: "Text written through UI Automation" };[m
+[32m+[m[32m  } catch (error) {[m
+     return {[m
+[31m-      success: true,[m
+[31m-      result: "Text typed",[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: error.message || "Failed to write text",[m
+     };[m
+[31m-  } catch {[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32masync function focusApp(app) {[m
+[32m+[m[32m  if (typeof app !== "string" || !app.trim()) {[m
+     return {[m
+       success: false,[m
+[31m-      error: "Failed to type text",[m
+[32m+[m[32m      error: "Invalid application name",[m
+     };[m
+   }[m
+[32m+[m
+[32m+[m[32m  const cleanApp = app.trim();[m
+[32m+[m
+[32m+[m[32m  const escapedApp = cleanApp.replace(/'/g, "''");[m
+[32m+[m[32m  const processName = escapedApp.replace(/\.exe$/i, "");[m
+[32m+[m
+[32m+[m[32m  const command = `[m
+[32m+[m[32m$processes = Get-Process -Name '${processName}' -ErrorAction SilentlyContinue[m
+[32m+[m[32mif (-not $processes) {[m
+[32m+[m[32m  Write-Error 'Application process not found'[m
+[32m+[m[32m  exit 1[m
+ }[m
+ [m
+[31m-function focusApp(app) {[m
+[31m-  try {[m
+[31m-    if (typeof app !== "string" || !app.trim()) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid application name",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32m$wshell = New-Object -ComObject WScript.Shell[m
+[32m+[m[32m$activated = $false[m
+ [m
+[31m-    const cleanApp = app.trim();[m
+[32m+[m[32mforeach ($process in $processes) {[m
+[32m+[m[32m  if ($process.MainWindowHandle -ne 0 -and $wshell.AppActivate($process.Id)) {[m
+[32m+[m[32m    $activated = $true[m
+[32m+[m[32m    break[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+ [m
+[31m-    execFile([m
+[31m-      "powershell.exe",[m
+[31m-      [[m
+[31m-        "-NoProfile",[m
+[31m-        "-Command",[m
+[31m-        `$wshell = New-Object -ComObject WScript.Shell; if ($wshell.AppActivate('${cleanApp}')) { exit 0 } else { exit 1 }`,[m
+[31m-      ],[m
+[31m-      (error) => {[m
+[31m-        if (error) {[m
+[31m-          console.error("Focus app error:", error.message);[m
+[31m-        }[m
+[31m-      },[m
+[31m-    );[m
+[32m+[m[32mif (-not $activated) {[m
+[32m+[m[32m  Write-Error 'Could not activate application window'[m
+[32m+[m[32m  exit 1[m
+[32m+[m[32m}[m
+[32m+[m[32m`;[m
+[32m+[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await new Promise((resolve, reject) => {[m
+[32m+[m[32m      execFile([m
+[32m+[m[32m        "powershell.exe",[m
+[32m+[m[32m        ["-NoProfile", "-Command", command],[m
+[32m+[m[32m        (error) => {[m
+[32m+[m[32m          if (error) {[m
+[32m+[m[32m            reject(error);[m
+[32m+[m[32m          } else {[m
+[32m+[m[32m            resolve();[m
+[32m+[m[32m          }[m
+[32m+[m[32m        },[m
+[32m+[m[32m      );[m
+[32m+[m[32m    });[m
+ [m
+     return {[m
+       success: true,[m
+       result: `${cleanApp} focused`,[m
+     };[m
+[31m-  } catch {[m
+[32m+[m[32m  } catch (error) {[m
+     return {[m
+       success: false,[m
+[31m-      error: "Failed to focus application",[m
+[32m+[m[32m      error:[m
+[32m+[m[32m        error.stderr?.trim() || error.message || "Failed to focus application",[m
+     };[m
+   }[m
+ }[m
+ [m
+[31m-function openDefaultBrowser(url = "") {[m
+[31m-  try {[m
+[31m-    const cleanUrl = typeof url === "string" ? url.trim() : "";[m
+[32m+[m[32masync function openDefaultBrowser(url = "") {[m
+[32m+[m[32m  const cleanUrl = typeof url === "string" ? url.trim() : "";[m
+ [m
+[31m-    const command = cleanUrl ? `start "" "${cleanUrl}"` : `start ""`;[m
+[32m+[m[32m  if (cleanUrl) {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const parsedUrl = new URL(cleanUrl);[m
+ [m
+[31m-    exec(command, (error) => {[m
+[31m-      if (error) {[m
+[31m-        console.error("Open default browser error:", error.message);[m
+[32m+[m[32m      if (!["http:", "https:"].includes(parsedUrl.protocol)) {[m
+[32m+[m[32m        return {[m
+[32m+[m[32m          success: false,[m
+[32m+[m[32m          error: "Invalid URL protocol",[m
+[32m+[m[32m        };[m
+       }[m
+[32m+[m[32m    } catch {[m
+[32m+[m[32m      return {[m
+[32m+[m[32m        success: false,[m
+[32m+[m[32m        error: "Invalid URL",[m
+[32m+[m[32m      };[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  const command = cleanUrl ? `start "" "${cleanUrl}"` : `start ""`;[m
+[32m+[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await new Promise((resolve, reject) => {[m
+[32m+[m[32m      exec(command, (error) => {[m
+[32m+[m[32m        if (error) {[m
+[32m+[m[32m          reject(error);[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m          resolve();[m
+[32m+[m[32m        }[m
+[32m+[m[32m      });[m
+     });[m
+ [m
+     return {[m
+[36m@@ -577,89 +658,102 @@[m [mfunction openDefaultBrowser(url = "") {[m
+         ? `${cleanUrl} opened in default browser`[m
+         : "Default browser opened",[m
+     };[m
+[31m-  } catch {[m
+[32m+[m[32m  } catch (error) {[m
+     return {[m
+       success: false,[m
+[31m-      error: "Failed to open default browser",[m
+[32m+[m[32m      error: error.message || "Failed to open default browser",[m
+     };[m
+   }[m
+ }[m
+ [m
+[31m-function hotkey(keys) {[m
+[31m-  try {[m
+[31m-    if (typeof keys !== "string" || !keys.trim()) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid hotkey",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32masync function hotkey(keys) {[m
+[32m+[m[32m  if (typeof keys !== "string" || !keys.trim()) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid hotkey",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    const parts = keys[m
+[31m-      .split("+")[m
+[31m-      .map((key) => key.trim().toUpperCase())[m
+[31m-      .filter(Boolean);[m
+[32m+[m[32m  const parts = keys[m
+[32m+[m[32m    .split("+")[m
+[32m+[m[32m    .map((key) => key.trim().toUpperCase())[m
+[32m+[m[32m    .filter(Boolean);[m
+ [m
+[31m-    if (parts.length < 2) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Hotkey must contain at least two keys",[m
+[31m-      };[m
+[31m-    }[m
+[31m-[m
+[31m-    const keyMap = {[m
+[31m-      CTRL: "^",[m
+[31m-      CONTROL: "^",[m
+[31m-      ALT: "%",[m
+[31m-      SHIFT: "+",[m
+[31m-      WIN: "{LWIN}",[m
+[31m-      WINDOWS: "{LWIN}",[m
+[31m-      ENTER: "{ENTER}",[m
+[31m-      ESC: "{ESC}",[m
+[31m-      TAB: "{TAB}",[m
+[31m-      SPACE: " ",[m
+[31m-      BACKSPACE: "{BACKSPACE}",[m
+[31m-      DELETE: "{DELETE}",[m
+[31m-      UP: "{UP}",[m
+[31m-      DOWN: "{DOWN}",[m
+[31m-      LEFT: "{LEFT}",[m
+[31m-      RIGHT: "{RIGHT}",[m
+[31m-      HOME: "{HOME}",[m
+[31m-      END: "{END}",[m
+[31m-      PGUP: "{PGUP}",[m
+[31m-      PGDN: "{PGDN}",[m
+[32m+[m[32m  if (parts.length < 2) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Hotkey must contain at least two keys",[m
+     };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    const convertedKeys = parts.map((key) => {[m
+[31m-      if (key.length === 1) {[m
+[31m-        return key.toLowerCase();[m
+[31m-      }[m
+[31m-[m
+[31m-      if (keyMap[key]) {[m
+[31m-        return keyMap[key];[m
+[31m-      }[m
+[32m+[m[32m  const keyMap = {[m
+[32m+[m[32m    CTRL: "^",[m
+[32m+[m[32m    CONTROL: "^",[m
+[32m+[m[32m    ALT: "%",[m
+[32m+[m[32m    SHIFT: "+",[m
+[32m+[m[32m    WIN: "{LWIN}",[m
+[32m+[m[32m    WINDOWS: "{LWIN}",[m
+[32m+[m[32m    ENTER: "{ENTER}",[m
+[32m+[m[32m    ESC: "{ESC}",[m
+[32m+[m[32m    TAB: "{TAB}",[m
+[32m+[m[32m    SPACE: " ",[m
+[32m+[m[32m    BACKSPACE: "{BACKSPACE}",[m
+[32m+[m[32m    DELETE: "{DELETE}",[m
+[32m+[m[32m    UP: "{UP}",[m
+[32m+[m[32m    DOWN: "{DOWN}",[m
+[32m+[m[32m    LEFT: "{LEFT}",[m
+[32m+[m[32m    RIGHT: "{RIGHT}",[m
+[32m+[m[32m    HOME: "{HOME}",[m
+[32m+[m[32m    END: "{END}",[m
+[32m+[m[32m    PGUP: "{PGUP}",[m
+[32m+[m[32m    PGDN: "{PGDN}",[m
+[32m+[m[32m  };[m
+ [m
+[31m-      if (/^F([1-9]|1[0-2])$/.test(key)) {[m
+[31m-        return `{${key}}`;[m
+[31m-      }[m
+[32m+[m[32m  let command;[m
+ [m
+[31m-      throw new Error(`Unsupported key: ${key}`);[m
+[31m-    });[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    command = parts[m
+[32m+[m[32m      .map((key) => {[m
+[32m+[m[32m        if (key.length === 1) {[m
+[32m+[m[32m          return key.toLowerCase();[m
+[32m+[m[32m        }[m
+ [m
+[31m-    const command = convertedKeys.join("");[m
+[32m+[m[32m        if (keyMap[key]) {[m
+[32m+[m[32m          return keyMap[key];[m
+[32m+[m[32m        }[m
+ [m
+[31m-    execFile([m
+[31m-      "powershell.exe",[m
+[31m-      [[m
+[31m-        "-NoProfile",[m
+[31m-        "-Command",[m
+[31m-        `$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys('${command}')`,[m
+[31m-      ],[m
+[31m-      (error) => {[m
+[31m-        if (error) {[m
+[31m-          console.error("Hotkey error:", error.message);[m
+[32m+[m[32m        if (/^F([1-9]|1[0-2])$/.test(key)) {[m
+[32m+[m[32m          return `{${key}}`;[m
+         }[m
+[31m-      },[m
+[31m-    );[m
+[32m+[m
+[32m+[m[32m        throw new Error(`Unsupported key: ${key}`);[m
+[32m+[m[32m      })[m
+[32m+[m[32m      .join("");[m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: error.message || "Failed to press hotkey",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await new Promise((resolve, reject) => {[m
+[32m+[m[32m      execFile([m
+[32m+[m[32m        "powershell.exe",[m
+[32m+[m[32m        [[m
+[32m+[m[32m          "-NoProfile",[m
+[32m+[m[32m          "-Command",[m
+[32m+[m[32m          `$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys('${command}')`,[m
+[32m+[m[32m        ],[m
+[32m+[m[32m        (error) => {[m
+[32m+[m[32m          if (error) {[m
+[32m+[m[32m            reject(error);[m
+[32m+[m[32m          } else {[m
+[32m+[m[32m            resolve();[m
+[32m+[m[32m          }[m
+[32m+[m[32m        },[m
+[32m+[m[32m      );[m
+[32m+[m[32m    });[m
+ [m
+     return {[m
+       success: true,[m
+[36m@@ -745,58 +839,52 @@[m [mfunction validateScreenCoordinates(x, y, screen) {[m
+   );[m
+ }[m
+ [m
+[31m-function mouseClick(input) {[m
+[31m-  try {[m
+[31m-    if (!input || typeof input !== "object") {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid mouse click input",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32masync function mouseClick(input) {[m
+[32m+[m[32m  if (!input || typeof input !== "object") {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid mouse click input",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    const parsedX = Number(input.x);[m
+[31m-    const parsedY = Number(input.y);[m
+[32m+[m[32m  const parsedX = Number(input.x);[m
+[32m+[m[32m  const parsedY = Number(input.y);[m
+ [m
+[31m-    const normalizedButton = String(input.button || "left")[m
+[31m-      .trim()[m
+[31m-      .toLowerCase();[m
+[32m+[m[32m  const normalizedButton = String(input.button || "left")[m
+[32m+[m[32m    .trim()[m
+[32m+[m[32m    .toLowerCase();[m
+ [m
+[31m-    if (!Number.isInteger(parsedX) || !Number.isInteger(parsedY)) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid coordinates",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32m  if (!Number.isInteger(parsedX) || !Number.isInteger(parsedY)) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid coordinates",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    if (!["left", "right"].includes(normalizedButton)) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Unsupported mouse button",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32m  if (!["left", "right"].includes(normalizedButton)) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Unsupported mouse button",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    const screen = getPrimaryScreenBounds();[m
+[32m+[m[32m  const screen = getPrimaryScreenBounds();[m
+ [m
+[31m-    if (!validateScreenCoordinates(parsedX, parsedY, screen)) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: `Coordinates are outside the primary screen: (${parsedX}, ${parsedY})`,[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32m  if (!validateScreenCoordinates(parsedX, parsedY, screen)) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: `Coordinates are outside the primary screen: (${parsedX}, ${parsedY})`,[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    execFile([m
+[31m-      "powershell.exe",[m
+[31m-      [[m
+[31m-        "-NoProfile",[m
+[31m-        "-Command",[m
+[31m-        `[m
+[32m+[m[32m  const command = `[m
+ Add-Type @'[m
+ using System;[m
+ using System.Runtime.InteropServices;[m
+ [m
+ public class MouseControl {[m
+     [DllImport("user32.dll")][m
+[31m-    public static extern void SetCursorPos(int x, int y);[m
+[32m+[m[32m    public static extern bool SetCursorPos(int x, int y);[m
+ [m
+     [DllImport("user32.dll")][m
+     public static extern void mouse_event([m
+[36m@@ -807,55 +895,36 @@[m [mpublic class MouseControl {[m
+         UIntPtr extraInfo[m
+     );[m
+ }[m
+[31m-'@;[m
+[32m+[m[32m'@[m
+ [m
+[31m-[MouseControl]::SetCursorPos([m
+[31m-    ${parsedX},[m
+[31m-    ${parsedY}[m
+[31m-);[m
+[32m+[m[32mif (-not [MouseControl]::SetCursorPos(${parsedX}, ${parsedY})) {[m
+[32m+[m[32m    throw 'Failed to move cursor'[m
+[32m+[m[32m}[m
+ [m
+ if ("${normalizedButton}" -eq "left") {[m
+[31m-    [MouseControl]::mouse_event([m
+[31m-        0x0002,[m
+[31m-        0,[m
+[31m-        0,[m
+[31m-        0,[m
+[31m-        [UIntPtr]::Zero[m
+[31m-    );[m
+[31m-[m
+[31m-    [MouseControl]::mouse_event([m
+[31m-        0x0004,[m
+[31m-        0,[m
+[31m-        0,[m
+[31m-        0,[m
+[31m-        [UIntPtr]::Zero[m
+[31m-    );[m
+[32m+[m[32m    [MouseControl]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)[m
+[32m+[m[32m    [MouseControl]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)[m
+ }[m
+ else {[m
+[31m-    [MouseControl]::mouse_event([m
+[31m-        0x0008,[m
+[31m-        0,[m
+[31m-        0,[m
+[31m-        0,[m
+[31m-        [UIntPtr]::Zero[m
+[31m-    );[m
+[31m-[m
+[31m-    [MouseControl]::mouse_event([m
+[31m-        0x0010,[m
+[31m-        0,[m
+[31m-        0,[m
+[31m-        0,[m
+[31m-        [UIntPtr]::Zero[m
+[31m-    );[m
+[32m+[m[32m    [MouseControl]::mouse_event(0x0008, 0, 0, 0, [UIntPtr]::Zero)[m
+[32m+[m[32m    [MouseControl]::mouse_event(0x0010, 0, 0, 0, [UIntPtr]::Zero)[m
+ }[m
+[31m-        `,[m
+[31m-      ],[m
+[31m-      (error) => {[m
+[31m-        if (error) {[m
+[31m-          console.error("Mouse click error:", error.message);[m
+[31m-        }[m
+[31m-      },[m
+[31m-    );[m
+[32m+[m[32m`;[m
+[32m+[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await new Promise((resolve, reject) => {[m
+[32m+[m[32m      execFile([m
+[32m+[m[32m        "powershell.exe",[m
+[32m+[m[32m        ["-NoProfile", "-Command", command],[m
+[32m+[m[32m        (error) => {[m
+[32m+[m[32m          if (error) {[m
+[32m+[m[32m            reject(error);[m
+[32m+[m[32m          } else {[m
+[32m+[m[32m            resolve();[m
+[32m+[m[32m          }[m
+[32m+[m[32m        },[m
+[32m+[m[32m      );[m
+[32m+[m[32m    });[m
+ [m
+     return {[m
+       success: true,[m
+[36m@@ -864,67 +933,68 @@[m [melse {[m
+   } catch (error) {[m
+     return {[m
+       success: false,[m
+[31m-      error: error.message || "Failed to click mouse",[m
+[32m+[m[32m      error: error.stderr?.trim() || error.message || "Failed to click mouse",[m
+     };[m
+   }[m
+ }[m
+ [m
+[31m-function mouseMove(input) {[m
+[31m-  try {[m
+[31m-    if (!input || typeof input !== "object") {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid mouse move input",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32masync function mouseMove(input) {[m
+[32m+[m[32m  if (!input || typeof input !== "object") {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid mouse move input",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    const parsedX = Number(input.x);[m
+[31m-    const parsedY = Number(input.y);[m
+[32m+[m[32m  const parsedX = Number(input.x);[m
+[32m+[m[32m  const parsedY = Number(input.y);[m
+ [m
+[31m-    if (!Number.isInteger(parsedX) || !Number.isInteger(parsedY)) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid coordinates",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32m  if (!Number.isInteger(parsedX) || !Number.isInteger(parsedY)) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid coordinates",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    const screen = getPrimaryScreenBounds();[m
+[32m+[m[32m  const screen = getPrimaryScreenBounds();[m
+ [m
+[31m-    if (!validateScreenCoordinates(parsedX, parsedY, screen)) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: `Coordinates are outside the primary screen: (${parsedX}, ${parsedY})`,[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32m  if (!validateScreenCoordinates(parsedX, parsedY, screen)) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: `Coordinates are outside the primary screen: (${parsedX}, ${parsedY})`,[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    execFile([m
+[31m-      "powershell.exe",[m
+[31m-      [[m
+[31m-        "-NoProfile",[m
+[31m-        "-Command",[m
+[31m-        `[m
+[32m+[m[32m  const command = `[m
+ Add-Type @'[m
+ using System;[m
+ using System.Runtime.InteropServices;[m
+ [m
+ public class MouseMoveControl {[m
+[31m-    [DllImport("user32.dll")][m
+[32m+[m[32m    [DllImport("user32.dll", SetLastError = true)][m
+     public static extern bool SetCursorPos(int x, int y);[m
+ }[m
+[31m-'@;[m
+[32m+[m[32m'@[m
+ [m
+[31m-[MouseMoveControl]::SetCursorPos([m
+[31m-    ${parsedX},[m
+[31m-    ${parsedY}[m
+[31m-);[m
+[31m-        `,[m
+[31m-      ],[m
+[31m-      (error) => {[m
+[31m-        if (error) {[m
+[31m-          console.error("Mouse move error:", error.message);[m
+[31m-        }[m
+[31m-      },[m
+[31m-    );[m
+[32m+[m[32mif (-not [MouseMoveControl]::SetCursorPos(${parsedX}, ${parsedY})) {[m
+[32m+[m[32m    throw "SetCursorPos failed"[m
+[32m+[m[32m}[m
+[32m+[m[32m`;[m
+[32m+[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await new Promise((resolve, reject) => {[m
+[32m+[m[32m      execFile([m
+[32m+[m[32m        "powershell.exe",[m
+[32m+[m[32m        ["-NoProfile", "-Command", command],[m
+[32m+[m[32m        (error) => {[m
+[32m+[m[32m          if (error) {[m
+[32m+[m[32m            reject(error);[m
+[32m+[m[32m          } else {[m
+[32m+[m[32m            resolve();[m
+[32m+[m[32m          }[m
+[32m+[m[32m        },[m
+[32m+[m[32m      );[m
+[32m+[m[32m    });[m
+ [m
+     return {[m
+       success: true,[m
+[36m@@ -933,110 +1003,78 @@[m [mpublic class MouseMoveControl {[m
+   } catch (error) {[m
+     return {[m
+       success: false,[m
+[31m-      error: error.message || "Failed to move mouse",[m
+[32m+[m[32m      error: error.stderr?.trim() || error.message || "Failed to move mouse",[m
+     };[m
+   }[m
+ }[m
+ [m
+[31m-function mouseDoubleClick(input) {[m
+[31m-  try {[m
+[31m-    if (!input || typeof input !== "object") {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid mouse double click input",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32masync function mouseDoubleClick(input) {[m
+[32m+[m[32m  if (!input || typeof input !== "object") {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid mouse double click input",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    const parsedX = Number(input.x);[m
+[31m-    const parsedY = Number(input.y);[m
+[32m+[m[32m  const parsedX = Number(input.x);[m
+[32m+[m[32m  const parsedY = Number(input.y);[m
+ [m
+[31m-    if (!Number.isInteger(parsedX) || !Number.isInteger(parsedY)) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid coordinates",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32m  if (!Number.isInteger(parsedX) || !Number.isInteger(parsedY)) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid coordinates",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    const screen = getPrimaryScreenBounds();[m
+[32m+[m[32m  const screen = getPrimaryScreenBounds();[m
+ [m
+[31m-    if (!validateScreenCoordinates(parsedX, parsedY, screen)) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: `Coordinates are outside the primary screen: (${parsedX}, ${parsedY})`,[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32m  if (!validateScreenCoordinates(parsedX, parsedY, screen)) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: `Coordinates are outside the primary screen: (${parsedX}, ${parsedY})`,[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    execFile([m
+[31m-      "powershell.exe",[m
+[31m-      [[m
+[31m-        "-NoProfile",[m
+[31m-        "-Command",[m
+[31m-        `[m
+[32m+[m[32m  const command = `[m
+ Add-Type @'[m
+ using System;[m
+ using System.Runtime.InteropServices;[m
+ [m
+ public class MouseDoubleClickControl {[m
+[31m-    [DllImport("user32.dll")][m
+[31m-    public static extern void SetCursorPos(int x, int y);[m
+[32m+[m[32m    [DllImport("user32.dll", SetLastError = true)][m
+[32m+[m[32m    public static extern bool SetCursorPos(int x, int y);[m
+ [m
+     [DllImport("user32.dll")][m
+     public static extern void mouse_event([m
+[31m-        uint flags,[m
+[31m-        uint dx,[m
+[31m-        uint dy,[m
+[31m-        uint data,[m
+[31m-        UIntPtr extraInfo[m
+[32m+[m[32m        uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo[m
+     );[m
+ }[m
+[31m-'@;[m
+[31m-[m
+[31m-[MouseDoubleClickControl]::SetCursorPos([m
+[31m-    ${parsedX},[m
+[31m-    ${parsedY}[m
+[31m-);[m
+[32m+[m[32m'@[m
+ [m
+[31m-[MouseDoubleClickControl]::mouse_event([m
+[31m-    0x0002,[m
+[31m-    0,[m
+[31m-    0,[m
+[31m-    0,[m
+[31m-    [UIntPtr]::Zero[m
+[31m-);[m
+[32m+[m[32mif (-not [MouseDoubleClickControl]::SetCursorPos(${parsedX}, ${parsedY})) {[m
+[32m+[m[32m    throw "SetCursorPos failed"[m
+[32m+[m[32m}[m
+ [m
+[31m-[MouseDoubleClickControl]::mouse_event([m
+[31m-    0x0004,[m
+[31m-    0,[m
+[31m-    0,[m
+[31m-    0,[m
+[31m-    [UIntPtr]::Zero[m
+[31m-);[m
+[32m+[m[32m[MouseDoubleClickControl]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)[m
+[32m+[m[32m[MouseDoubleClickControl]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)[m
+ [m
+[31m-Start-Sleep -Milliseconds 100;[m
+[32m+[m[32mStart-Sleep -Milliseconds 100[m
+ [m
+[31m-[MouseDoubleClickControl]::mouse_event([m
+[31m-    0x0002,[m
+[31m-    0,[m
+[31m-    0,[m
+[31m-    0,[m
+[31m-    [UIntPtr]::Zero[m
+[31m-);[m
+[32m+[m[32m[MouseDoubleClickControl]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)[m
+[32m+[m[32m[MouseDoubleClickControl]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)[m
+[32m+[m[32m`;[m
+ [m
+[31m-[MouseDoubleClickControl]::mouse_event([m
+[31m-    0x0004,[m
+[31m-    0,[m
+[31m-    0,[m
+[31m-    0,[m
+[31m-    [UIntPtr]::Zero[m
+[31m-);[m
+[31m-        `,[m
+[31m-      ],[m
+[31m-      (error) => {[m
+[31m-        if (error) {[m
+[31m-          console.error("Mouse double click error:", error.message);[m
+[31m-        }[m
+[31m-      },[m
+[31m-    );[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await new Promise((resolve, reject) => {[m
+[32m+[m[32m      execFile([m
+[32m+[m[32m        "powershell.exe",[m
+[32m+[m[32m        ["-NoProfile", "-Command", command],[m
+[32m+[m[32m        (error) => {[m
+[32m+[m[32m          if (error) reject(error);[m
+[32m+[m[32m          else resolve();[m
+[32m+[m[32m        },[m
+[32m+[m[32m      );[m
+[32m+[m[32m    });[m
+ [m
+     return {[m
+       success: true,[m
+[36m@@ -1045,30 +1083,25 @@[m [mStart-Sleep -Milliseconds 100;[m
+   } catch (error) {[m
+     return {[m
+       success: false,[m
+[31m-      error: error.message || "Failed to double click",[m
+[32m+[m[32m      error: error.stderr?.trim() || error.message || "Failed to double click",[m
+     };[m
+   }[m
+ }[m
+[31m-function scroll(input) {[m
+[31m-  try {[m
+[31m-    const amount = Number(input);[m
+ [m
+[31m-    if (!Number.isInteger(amount) || amount === 0) {[m
+[31m-      return {[m
+[31m-        success: false,[m
+[31m-        error: "Invalid scroll amount",[m
+[31m-      };[m
+[31m-    }[m
+[32m+[m[32masync function scroll(input) {[m
+[32m+[m[32m  const amount = Number(input);[m
+[32m+[m
+[32m+[m[32m  if (!Number.isInteger(amount) || amount === 0) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: "Invalid scroll amount",[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+ [m
+[31m-    const scrollAmount =[m
+[31m-      amount > 0 ? Math.min(amount, 20) : Math.max(amount, -20);[m
+[32m+[m[32m  const scrollAmount =[m
+[32m+[m[32m    amount > 0 ? Math.min(amount, 20) : Math.max(amount, -20);[m
+ [m
+[31m-    execFile([m
+[31m-      "powershell.exe",[m
+[31m-      [[m
+[31m-        "-NoProfile",[m
+[31m-        "-Command",[m
+[31m-        `[m
+[32m+[m[32m  const command = `[m
+ Add-Type @'[m
+ using System;[m
+ using System.Runtime.InteropServices;[m
+[36m@@ -1083,23 +1116,23 @@[m [mpublic class MouseScrollControl {[m
+         UIntPtr extraInfo[m
+     );[m
+ }[m
+[31m-'@;[m
+[32m+[m[32m'@[m
+ [m
+ [MouseScrollControl]::mouse_event([m
+[31m-    0x0800,[m
+[31m-    0,[m
+[31m-    0,[m
+[31m-    ${scrollAmount * 120},[m
+[32m+[m[32m    [uint32]0x0800,[m
+[32m+[m[32m    [uint32]0,[m
+[32m+[m[32m    [uint32]0,[m
+[32m+[m[32m    [int]${scrollAmount * 120},[m
+     [UIntPtr]::Zero[m
+[31m-);[m
+[31m-        `,[m
+[31m-      ],[m
+[31m-      (error) => {[m
+[31m-        if (error) {[m
+[31m-          console.error("Mouse scroll error:", error.message);[m
+[31m-        }[m
+[31m-      },[m
+[31m-    );[m
+[32m+[m[32m)[m
+[32m+[m[32m`;[m
+[32m+[m
+[32m+[m[32m  const { execFile } = require("child_process");[m
+[32m+[m[32m  const { promisify } = require("util");[m
+[32m+[m[32m  const execFileAsync = promisify(execFile);[m
+[32m+[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await execFileAsync("powershell.exe", ["-NoProfile", "-Command", command]);[m
+ [m
+     return {[m
+       success: true,[m
+[36m@@ -1108,10 +1141,11 @@[m [mpublic class MouseScrollControl {[m
+   } catch (error) {[m
+     return {[m
+       success: false,[m
+[31m-      error: error.message || "Failed to scroll",[m
+[32m+[m[32m      error: error.stderr?.trim() || error.message || "Failed to scroll",[m
+     };[m
+   }[m
+ }[m
+[32m+[m
+ /* -------------------------------------------------------------------------- */[m
+ /* SCREENSHOT                                                                 */[m
+ /* -------------------------------------------------------------------------- */[m

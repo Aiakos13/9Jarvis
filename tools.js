@@ -84,7 +84,10 @@ async function webSearch(query) {
         error: "TAVILY_API_KEY is missing",
       };
     }
-
+    const isNewsQuery =
+      /اخبار|خبرهای|خبر|تحولات اخیر|آخرین.*(هوش مصنوعی|فناوری)|latest news|recent news/i.test(
+        query,
+      );
     const response = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: {
@@ -93,8 +96,11 @@ async function webSearch(query) {
       body: JSON.stringify({
         api_key: process.env.TAVILY_API_KEY,
         query: query.trim(),
-        search_depth: "basic",
-        max_results: 5,
+        topic: isNewsQuery ? "news" : "general",
+        search_depth: isNewsQuery ? "advanced" : "basic",
+        max_results: isNewsQuery ? 10 : 5,
+        ...(isNewsQuery ? { days: 30 } : {}),
+        include_raw_content: isNewsQuery,
       }),
     });
 
@@ -104,12 +110,23 @@ async function webSearch(query) {
         error: `Search API error: ${response.status}`,
       };
     }
-
     const data = await response.json();
+
+    let results = data.results || [];
+
+    if (isNewsQuery) {
+      const aiKeywords =
+        /هوش مصنوعی|هوش‌مصنوعی|artificial intelligence|\bAI\b|machine learning|یادگیری ماشین|مدل زبانی|مدل هوش مصنوعی|هوش مولد|generative ai/i;
+
+      results = results.filter((item) => {
+        const text = `${item.title || ""} ${item.content || ""}`;
+        return aiKeywords.test(text);
+      });
+    }
 
     return {
       success: true,
-      result: data.results || [],
+      result: results,
     };
   } catch (error) {
     return {
@@ -171,7 +188,40 @@ async function geocodeCity(city) {
     };
   }
 }
+function getWeatherDescription(code) {
+  const weatherCodes = {
+    0: "آسمان صاف",
+    1: "عمدتاً صاف",
+    2: "نیمه‌ابری",
+    3: "کاملاً ابری",
+    45: "مه",
+    48: "مه یخ‌زده",
+    51: "نم‌نم باران خفیف",
+    53: "نم‌نم باران متوسط",
+    55: "نم‌نم باران شدید",
+    56: "باران یخ‌زده خفیف",
+    57: "باران یخ‌زده شدید",
+    61: "باران خفیف",
+    63: "باران متوسط",
+    65: "باران شدید",
+    66: "باران یخ‌زده خفیف",
+    67: "باران یخ‌زده شدید",
+    71: "برف خفیف",
+    73: "برف متوسط",
+    75: "برف شدید",
+    77: "دانه‌های برف",
+    80: "رگبار باران خفیف",
+    81: "رگبار باران متوسط",
+    82: "رگبار باران شدید",
+    85: "رگبار برف خفیف",
+    86: "رگبار برف شدید",
+    95: "طوفان تندری",
+    96: "طوفان تندری همراه با تگرگ خفیف",
+    99: "طوفان تندری همراه با تگرگ شدید",
+  };
 
+  return weatherCodes[code] || "وضعیت نامشخص";
+}
 async function getWeather(input) {
   try {
     let latitude;
@@ -219,6 +269,8 @@ async function getWeather(input) {
       `?latitude=${latitude}` +
       `&longitude=${longitude}` +
       `&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m` +
+      `&temperature_unit=celsius` +
+      `&wind_speed_unit=ms` +
       `&timezone=auto`;
 
     const response = await fetch(url);
@@ -239,6 +291,7 @@ async function getWeather(input) {
         temperature: data.current?.temperature_2m,
         humidity: data.current?.relative_humidity_2m,
         weatherCode: data.current?.weather_code,
+        weatherDescription: getWeatherDescription(data.current?.weather_code),
         windSpeed: data.current?.wind_speed_10m,
         time: data.current?.time,
       },
@@ -277,6 +330,25 @@ async function getCurrencyRate(input) {
     const base = from.trim().toUpperCase();
     const target = to.trim().toUpperCase();
 
+    if (!/^[A-Z]{3}$/.test(base) || !/^[A-Z]{3}$/.test(target)) {
+      return {
+        success: false,
+        error: "Currency codes must contain exactly 3 letters",
+      };
+    }
+
+    if (base === target) {
+      return {
+        success: true,
+        result: {
+          from: base,
+          to: target,
+          rate: 1,
+          date: new Date().toISOString().slice(0, 10),
+        },
+      };
+    }
+
     const url =
       `https://api.frankfurter.app/latest` +
       `?from=${encodeURIComponent(base)}` +
@@ -284,6 +356,40 @@ async function getCurrencyRate(input) {
 
     const response = await fetch(url);
 
+    if (response.status === 404) {
+      const currenciesResponse = await fetch(
+        "https://api.frankfurter.app/currencies",
+      );
+
+      if (!currenciesResponse.ok) {
+        return {
+          success: false,
+          error: "Unable to validate currency codes",
+        };
+      }
+
+      const currencies = await currenciesResponse.json();
+
+      const baseValid = Object.hasOwn(currencies, base);
+      const targetValid = Object.hasOwn(currencies, target);
+
+      if (!baseValid || !targetValid) {
+        const invalidCodes = [];
+
+        if (!baseValid) invalidCodes.push(base);
+        if (!targetValid) invalidCodes.push(target);
+
+        return {
+          success: false,
+          error: `Unsupported currency code: ${invalidCodes.join(", ")}`,
+        };
+      }
+
+      return {
+        success: false,
+        error: `Exchange rate unavailable: ${base} -> ${target}`,
+      };
+    }
     if (!response.ok) {
       return {
         success: false,
@@ -338,6 +444,48 @@ async function openApp(app) {
         }
       });
     });
+
+    const processName = cleanApp.replace(/\.exe$/i, "");
+
+    if (/^[a-zA-Z0-9_.-]+$/.test(processName)) {
+      const escapedName = processName.replace(/'/g, "''");
+
+      const command = `
+$deadline = (Get-Date).AddSeconds(5)
+$windowFound = $false
+
+do {
+  $processes = Get-Process -Name '${escapedName}' -ErrorAction SilentlyContinue
+
+  foreach ($process in $processes) {
+    if ($process.MainWindowHandle -ne 0) {
+      $windowFound = $true
+      break
+    }
+  }
+
+  if (-not $windowFound) {
+    Start-Sleep -Milliseconds 200
+  }
+} while (-not $windowFound -and (Get-Date) -lt $deadline)
+
+if (-not $windowFound) {
+  Write-Error 'Application window did not appear within 5 seconds'
+  exit 1
+}
+`;
+
+      await new Promise((resolve, reject) => {
+        execFile(
+          "powershell.exe",
+          ["-NoProfile", "-Command", command],
+          (error) => {
+            if (error) reject(error);
+            else resolve();
+          },
+        );
+      });
+    }
 
     return {
       success: true,

@@ -138,7 +138,16 @@ WEB SEARCH:
 - Use information from the successful search result.
 - Do not claim that the search failed if results were returned.
 - Do not invent facts that are not supported by the search results.
-
+- Prioritize recent information when the user asks for the latest news.
+- Check publication dates when available.
+- Do not treat old articles as recent news.
+- Distinguish publication dates from event dates.
+- If a publication date is unavailable, do not invent one.
+- Select distinct news stories instead of repeating the same story from multiple sources.
+- Summarize each story using only information supported by its search result.
+- Include the source title and URL for each news item when available.
+- If search results do not contain enough information, clearly state the limitation.
+- Do not present assumptions or unverified claims as confirmed facts.
 CURRENCY:
 - Use the exact "rate" returned by the successful currency tool.
 - Clearly state the source currency, target currency, rate, and date when available.
@@ -255,6 +264,10 @@ async function askUser(userInput) {
 
     if (!agentResult.success) {
       console.log(`⚠️ Agent error: ${agentResult.error}`);
+      console.log(
+        `9Jarvis: نتونستم درخواستت رو کامل کنم. خطا: ${agentResult.error}`,
+      );
+      return;
     }
 
     const agentHistory = Array.isArray(agentResult.history)

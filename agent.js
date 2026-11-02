@@ -42,7 +42,190 @@ const TOOL_NAMES = [
   "scroll",
   "screenshot",
 ];
+function defineNativeTool(name, description, properties = {}, required = []) {
+  return {
+    type: "function",
+    function: {
+      name,
+      description,
+      strict: true,
+      parameters: {
+        type: "object",
+        properties,
+        required,
+        additionalProperties: false,
+      },
+    },
+  };
+}
 
+const NATIVE_TOOLS = [
+  defineNativeTool(
+    "calculator",
+    "Calculate a mathematical expression.",
+    {
+      expression: { type: "string" },
+    },
+    ["expression"],
+  ),
+
+  defineNativeTool("time", "Get the current time."),
+  defineNativeTool("date", "Get today's date."),
+  defineNativeTool("random", "Generate a random number."),
+
+  defineNativeTool(
+    "web_search",
+    "Search the web.",
+    {
+      query: { type: "string" },
+    },
+    ["query"],
+  ),
+
+  defineNativeTool(
+    "geocode",
+    "Get geographic coordinates of a city.",
+    {
+      city: { type: "string" },
+    },
+    ["city"],
+  ),
+
+  defineNativeTool(
+    "weather",
+    "Get weather information for a city.",
+    {
+      city: { type: "string" },
+    },
+    ["city"],
+  ),
+
+  defineNativeTool(
+    "currency",
+    "Get the exchange rate between two currencies.",
+    {
+      from: { type: "string" },
+      to: { type: "string" },
+    },
+    ["from", "to"],
+  ),
+
+  defineNativeTool(
+    "open_app",
+    "Open an application.",
+    {
+      app: { type: "string" },
+    },
+    ["app"],
+  ),
+
+  defineNativeTool(
+    "open_url",
+    "Open a specific URL.",
+    {
+      url: { type: "string" },
+    },
+    ["url"],
+  ),
+
+  defineNativeTool(
+    "close_app",
+    "Close an application.",
+    {
+      app: { type: "string" },
+    },
+    ["app"],
+  ),
+
+  defineNativeTool(
+    "press_key",
+    "Press a single keyboard key.",
+    {
+      key: { type: "string" },
+    },
+    ["key"],
+  ),
+
+  defineNativeTool(
+    "hotkey",
+    "Press a keyboard shortcut.",
+    {
+      keys: { type: "string" },
+    },
+    ["keys"],
+  ),
+
+  defineNativeTool(
+    "focus_app",
+    "Focus an application window.",
+    {
+      app: { type: "string" },
+    },
+    ["app"],
+  ),
+
+  defineNativeTool(
+    "type_text",
+    "Type the exact requested text.",
+    {
+      text: { type: "string" },
+    },
+    ["text"],
+  ),
+
+  defineNativeTool(
+    "open_default_browser",
+    "Open the default browser, optionally at a URL.",
+    {
+      url: { type: "string" },
+    },
+    ["url"],
+  ),
+
+  defineNativeTool(
+    "mouse_click",
+    "Click at explicit screen coordinates.",
+    {
+      x: { type: "integer" },
+      y: { type: "integer" },
+      button: { type: "string", enum: ["left", "right"] },
+    },
+    ["x", "y", "button"],
+  ),
+
+  defineNativeTool(
+    "mouse_move",
+    "Move the mouse to explicit screen coordinates.",
+    {
+      x: { type: "integer" },
+      y: { type: "integer" },
+    },
+    ["x", "y"],
+  ),
+
+  defineNativeTool(
+    "mouse_double_click",
+    "Double-click at explicit screen coordinates.",
+    {
+      x: { type: "integer" },
+      y: { type: "integer" },
+    },
+    ["x", "y"],
+  ),
+
+  defineNativeTool(
+    "scroll",
+    "Scroll the mouse wheel.",
+    {
+      amount: { type: "integer" },
+    },
+    ["amount"],
+  ),
+
+  defineNativeTool("screenshot", "Capture a screenshot."),
+
+  defineNativeTool("finish", "Finish the current task."),
+];
 const AGENT_SYSTEM_PROMPT = `
 You are the decision-making agent of 9Jarvis.
 
@@ -51,7 +234,7 @@ Your ONLY job is to decide which tool should be executed next.
 Available tools:
 ${TOOL_NAMES.map((tool) => `- ${tool}`).join("\n")}
 
-You MUST return ONLY valid JSON.
+You may either call exactly one available tool using a native function call, or return a JSON object for the finish action.
 
 VALID TOOL ACTION:
 {
@@ -69,17 +252,16 @@ GENERAL RULES:
 
 1. Never invent a tool.
 2. Only use the available tools.
-3. If the user's request requires a tool that has not been successfully executed, use that tool.
-4. If a successful previous tool result already satisfies the user's request, return {"action":"finish"}.
-5. Never repeat a successful tool when its result already satisfies the request.
-6. Never return tool results yourself.
-7. Never return fields such as "answer", "result", "time", or "date".
-8. Never answer the user directly.
-9. Your only job is tool selection.
-10. Return exactly one JSON object.
-11. Do not use markdown.
-12. Do not explain your decision.
-13. Do not return an empty response.
+3. If the request can be answered without a tool, return {"action":"finish"}.
+4. If the user's request requires a tool that has not been successfully executed, use that tool.
+5. If a successful previous tool result already satisfies the user's request, return {"action":"finish"}.
+6. Never repeat a successful tool when its result already satisfies the request.
+7. Never return tool results yourself.
+8. Never return fields such as "answer", "result", "time", or "date".
+9. Return exactly one valid JSON object.
+10. Do not use markdown.
+11. Do not explain your decision.
+12. Do not return an empty response.
 
 CALCULATOR:
 - Use only for mathematical calculations.
@@ -310,18 +492,22 @@ async function analyzeScreenshot(imageBase64, width, height) {
         {
           role: "system",
           content: `
-Analyze the screenshot.
+Analyze the screenshot carefully.
 
 Screenshot dimensions:
 WIDTH: ${width}
 HEIGHT: ${height}
 
-Return ONLY valid JSON.
-
-Required format:
+Return ONLY valid JSON using this exact structure:
 
 {
-  "description": "brief description of what is visible",
+  "description": "brief description of the screenshot",
+  "visibleText": [
+    {
+      "window": "Notepad",
+      "text": "exact readable text inside the window"
+    }
+  ],
   "elements": [
     {
       "name": "Save button",
@@ -333,29 +519,33 @@ Required format:
   ]
 }
 
-Rules:
+Rules for visibleText:
+- Read the actual text visible inside application windows.
+- Prioritize text editor content, including Notepad.
+- Include the window title if clearly readable.
+- Preserve the original language, wording, punctuation, and line breaks.
+- Transcribe text instead of merely describing what it says.
+- Do not invent, complete, or guess missing text.
+- If text is partially unreadable, transcribe only the readable parts.
+- If no text is readable, return an empty visibleText array.
+- Do not confuse browser content with desktop application content.
 
-- Only describe what is clearly visible.
-- Only include clearly visible interactive UI elements.
-- Do not invent elements.
-- Do not guess coordinates.
-- Coordinates are pixel coordinates relative to this screenshot.
-- x1 and x2 define the left and right edges of the clickable element.
-- y1 and y2 define the top and bottom edges of the clickable element.
+Rules for elements:
+- Include only clearly visible interactive UI elements.
+- Do not invent elements or guess coordinates.
+- Coordinates are pixel coordinates relative to the screenshot.
+- x1 and x2 define the left and right edges.
+- y1 and y2 define the top and bottom edges.
 - x1 must be smaller than x2.
 - y1 must be smaller than y2.
 - All coordinates must be inside the screenshot.
-- The bounding box must cover the actual clickable area as accurately as possible.
 - Use integer coordinates only.
 - If no clearly visible interactive elements exist, return an empty elements array.
-- Do not use Markdown.
-- Do not use code fences.
-- Do not add explanations.
-- Do not add text before or after the JSON.
-- Do not explain your reasoning.
-- Do not think aloud.
-- Return ONLY the JSON object.
-The final response MUST be only the JSON object.
+
+General rules:
+- Do not use Markdown or code fences.
+- Do not add explanations outside the JSON.
+- Return only the JSON object.
           `.trim(),
         },
         {
@@ -363,7 +553,7 @@ The final response MUST be only the JSON object.
           content: [
             {
               type: "text",
-              text: "Analyze this screenshot and return ONLY the required JSON.",
+              text: "Transcribe all clearly readable on-screen text and identify visible interactive elements. Return only the required JSON.",
             },
             {
               type: "image_url",
@@ -395,16 +585,14 @@ The final response MUST be only the JSON object.
       );
     }
 
-    result = result.trim();
-
-    console.log("🔍 RAW VISION:", result);
-
-    // Remove accidental Markdown code fences.
     result = result
+      .trim()
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
       .replace(/\s*```$/i, "")
       .trim();
+
+    console.log("🔍 RAW VISION:", result);
 
     let parsed;
 
@@ -422,6 +610,22 @@ The final response MUST be only the JSON object.
       parsed.description = "";
     }
 
+    if (!Array.isArray(parsed.visibleText)) {
+      parsed.visibleText = [];
+    }
+
+    const visibleText = parsed.visibleText
+      .filter(
+        (item) =>
+          item &&
+          typeof item.window === "string" &&
+          typeof item.text === "string",
+      )
+      .map((item) => ({
+        window: item.window.trim(),
+        text: item.text,
+      }));
+
     if (!Array.isArray(parsed.elements)) {
       parsed.elements = [];
     }
@@ -438,8 +642,8 @@ The final response MUST be only the JSON object.
           Number.isInteger(element.y2) &&
           element.x1 >= 0 &&
           element.y1 >= 0 &&
-          element.x2 >= element.x1 &&
-          element.y2 >= element.y1 &&
+          element.x2 > element.x1 &&
+          element.y2 > element.y1 &&
           element.x2 < width &&
           element.y2 < height
         );
@@ -454,15 +658,16 @@ The final response MUST be only the JSON object.
 
     const normalizedResult = {
       description: parsed.description.trim(),
+      visibleText,
       elements: validElements,
     };
 
-    console.log("🧩 VISION ELEMENTS:", normalizedResult.elements);
+    console.log("📝 VISIBLE TEXT:", visibleText);
+    console.log("🧩 VISION ELEMENTS:", validElements);
 
     return JSON.stringify(normalizedResult);
   } catch (error) {
     console.error("❌ Vision analysis error:", error.message);
-
     throw new Error(error.message || "Failed to analyze screenshot.");
   }
 }
@@ -516,11 +721,193 @@ function parseScreenElements(visionText) {
   }
 }
 
+function normalizeNativeToolCall(functionName, rawArguments) {
+  if (functionName === "finish") {
+    return JSON.stringify({ action: "finish" });
+  }
+
+  if (typeof functionName !== "string" || !TOOL_NAMES.includes(functionName)) {
+    throw new Error(`Unknown tool: ${functionName}`);
+  }
+
+  let args;
+
+  try {
+    args = JSON.parse(rawArguments);
+  } catch {
+    throw new Error("Agent returned invalid tool-call arguments.");
+  }
+
+  if (!args || typeof args !== "object" || Array.isArray(args)) {
+    throw new Error("Agent returned invalid tool-call arguments.");
+  }
+
+  let input;
+
+  if (Object.prototype.hasOwnProperty.call(args, "input")) {
+    input = args.input;
+  } else {
+    switch (functionName) {
+      case "calculator":
+        input = args.expression;
+        break;
+
+      case "web_search":
+        input = args.query;
+        break;
+
+      case "geocode":
+      case "weather":
+        input = args.city;
+        break;
+
+      case "open_app":
+      case "close_app":
+      case "focus_app":
+        input = args.app;
+        break;
+
+      case "open_url":
+        input = args.url;
+        break;
+
+      case "open_default_browser":
+        input = args.url ?? "";
+        break;
+
+      case "press_key":
+        input = args.key;
+        break;
+
+      case "type_text":
+        input = args.text;
+        break;
+
+      case "hotkey":
+        input = args.keys;
+        break;
+
+      case "currency":
+      case "mouse_click":
+      case "mouse_move":
+      case "mouse_double_click":
+        input = args;
+        break;
+
+      case "scroll":
+        input = args.amount;
+        break;
+
+      case "time":
+      case "date":
+      case "random":
+      case "screenshot":
+        input = "";
+        break;
+
+      default:
+        input = args;
+    }
+  }
+
+  if (input === undefined || input === null) {
+    throw new Error(
+      `Agent returned missing arguments for tool: ${functionName}`,
+    );
+  }
+
+  const stringTools = [
+    "weather",
+    "open_app",
+    "close_app",
+    "focus_app",
+    "open_url",
+    "open_default_browser",
+    "press_key",
+    "type_text",
+    "hotkey",
+    "calculator",
+    "web_search",
+    "geocode",
+  ];
+
+  if (stringTools.includes(functionName) && typeof input !== "string") {
+    throw new Error(
+      `Agent returned invalid argument type for tool: ${functionName}`,
+    );
+  }
+
+  if (functionName === "scroll" && !Number.isInteger(input)) {
+    throw new Error("Agent returned invalid scroll amount.");
+  }
+
+  if (
+    functionName === "currency" ||
+    functionName === "mouse_click" ||
+    functionName === "mouse_move" ||
+    functionName === "mouse_double_click"
+  ) {
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+      throw new Error(`Agent returned invalid input for tool: ${functionName}`);
+    }
+  }
+
+  if (functionName === "currency") {
+    const { from, to } = input;
+
+    if (
+      typeof from !== "string" ||
+      typeof to !== "string" ||
+      !from.trim() ||
+      !to.trim()
+    ) {
+      throw new Error("Agent returned invalid currency arguments.");
+    }
+  }
+
+  if (
+    functionName === "mouse_click" ||
+    functionName === "mouse_move" ||
+    functionName === "mouse_double_click"
+  ) {
+    const x = Number(input.x);
+    const y = Number(input.y);
+
+    if (!Number.isInteger(x) || !Number.isInteger(y)) {
+      throw new Error("Agent returned invalid mouse coordinates.");
+    }
+
+    if (
+      functionName === "mouse_click" &&
+      !["left", "right"].includes(
+        String(input.button || "left")
+          .trim()
+          .toLowerCase(),
+      )
+    ) {
+      throw new Error("Agent returned invalid mouse button.");
+    }
+  }
+
+  return JSON.stringify({
+    action: "tool",
+    tool: functionName,
+    input,
+  });
+}
+
 async function askAgentForNextAction(userInput, history) {
   const response = await client.chat.completions.create(
     {
       model: MODEL,
       max_tokens: AGENT_MAX_TOKENS,
+      tools: NATIVE_TOOLS,
+      tool_choice: "auto",
+      parallel_tool_calls: false,
+      reasoning: {
+        effort: "low",
+        exclude: true,
+      },
       messages: [
         {
           role: "system",
@@ -537,13 +924,38 @@ async function askAgentForNextAction(userInput, history) {
     },
   );
 
-  const content = response?.choices?.[0]?.message?.content;
-  console.log("🧠 AGENT RAW RESPONSE:", JSON.stringify(response, null, 2));
-  if (!content || typeof content !== "string" || !content.trim()) {
-    throw new Error("Agent returned an empty response.");
+  const choice = response?.choices?.[0];
+  const message = choice?.message;
+  const toolCalls = message?.tool_calls;
+  if (Array.isArray(toolCalls) && toolCalls.length === 1) {
+    const toolCall = toolCalls[0];
+
+    if (toolCall?.type === "function") {
+      const functionName = toolCall.function?.name;
+      const rawArguments = toolCall.function?.arguments;
+
+      if (
+        functionName === "finish" ||
+        (typeof functionName === "string" && TOOL_NAMES.includes(functionName))
+      ) {
+        return normalizeNativeToolCall(functionName, rawArguments);
+      }
+    }
   }
 
-  return content.trim();
+  const content = message?.content;
+
+  if (typeof content === "string" && content.trim()) {
+    console.log("🤖 AGENT RAW RESPONSE:", content);
+    return content.trim();
+  }
+
+  const finishReason = choice?.finish_reason || "unknown";
+  const nativeFinishReason = choice?.native_finish_reason || "unknown";
+
+  throw new Error(
+    `Agent returned no usable content. finish_reason=${finishReason}, native_finish_reason=${nativeFinishReason}`,
+  );
 }
 
 function cleanJsonResponse(rawAction) {
@@ -564,7 +976,31 @@ function cleanJsonResponse(rawAction) {
 }
 
 function parseAgentAction(rawAction) {
-  const cleaned = cleanJsonResponse(rawAction);
+  let cleaned = cleanJsonResponse(rawAction);
+
+  const harmonyCall = cleaned.match(
+    /to=calculator\b[\s\S]*?<\|message\|>\s*(\{[\s\S]*?\})\s*<\|call\|>/,
+  );
+
+  if (harmonyCall) {
+    try {
+      const payload = JSON.parse(harmonyCall[1]);
+
+      if (
+        payload &&
+        typeof payload.expression === "string" &&
+        payload.expression.trim()
+      ) {
+        cleaned = JSON.stringify({
+          action: "tool",
+          tool: "calculator",
+          input: payload.expression.trim(),
+        });
+      }
+    } catch {
+      // Invalid Harmony payload remains invalid.
+    }
+  }
 
   if (!cleaned) {
     return {
@@ -600,10 +1036,32 @@ function parseAgentAction(rawAction) {
     };
   }
 
+  // Normalize shorthand tool actions, e.g.:
+  // {"action":"type_text","input":"Hello"}
+  // Normalize tool actions to the standard format.
+  if (typeof action.action === "string" && TOOL_NAMES.includes(action.action)) {
+    if (action.tool !== undefined && action.tool !== action.action) {
+      return {
+        valid: false,
+        error: "Action and tool names do not match.",
+      };
+    }
+
+    action.tool = action.action;
+    action.action = "tool";
+  }
+
   if (action.action !== "tool") {
     return {
       valid: false,
       error: "Agent returned an unknown action.",
+    };
+  }
+
+  if (action.action === action.tool && !TOOL_NAMES.includes(action.tool)) {
+    return {
+      valid: false,
+      error: `Unknown tool: ${action.tool}`,
     };
   }
 
@@ -850,4 +1308,6 @@ async function runAgent(userInput) {
 
 module.exports = {
   runAgent,
+  parseAgentAction,
+  normalizeNativeToolCall,
 };

@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ override: true });
 
 const config = {
   openRouterApiKey: process.env.OPENROUTER_API_KEY,

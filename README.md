@@ -1,232 +1,147 @@
 # 🤖 9Jarvis
 
-> A modular personal AI assistant built incrementally from the ground up.
+> A modular personal AI assistant built incrementally, from conversational AI to an autonomous computer-interacting agent.
 
-9Jarvis is a personal AI assistant designed to grow from a simple conversational AI into a modular agent capable of memory, context retrieval, tool usage, multi-step reasoning, computer interaction, automation, voice interaction, and eventually a graphical interface.
+**9Jarvis** is an open-source personal AI assistant project focused on exploring and building the architecture behind modern AI agents.
 
-The project is built incrementally:
+It is designed to evolve from a simple conversational interface into a modular system capable of understanding natural language, maintaining persistent memory, retrieving relevant context, using external tools, executing multi-step tasks, interacting with the operating system, and eventually supporting automation, voice interaction, and a graphical interface.
 
-> One Change → Test → Inspect Output → Next Change
+The project emphasizes modular architecture, practical implementation, incremental development, and testing each component before moving to the next stage.
 
-Each layer is tested before moving deeper into the architecture.
+> **One Change → Test → Inspect Output → Next Change**
 
 ---
 
 # ✨ Vision
 
-The long-term goal of 9Jarvis is to become a personal AI system that can:
+The long-term goal is to build a personal AI assistant that can:
 
-- Understand natural language
-- Remember useful information about the user
-- Retrieve relevant memory and context
-- Decide when tools are required
-- Select and execute tools
-- Use real tool results
-- Perform multi-step tasks
-- Interact with the computer
-- Automate recurring actions
-- Support voice interaction
-- Provide a graphical interface
-- Act as a reliable personal AI assistant
+- Understand natural language and user intent.
+- Maintain persistent memory across sessions.
+- Retrieve relevant information and context.
+- Decide when external tools are necessary.
+- Select tools using native function calling.
+- Execute actions and interpret their results.
+- Handle multi-step tasks through an Agent loop.
+- Observe and interact with the computer.
+- Automate recurring and event-driven workflows.
+- Support speech recognition and voice responses.
+- Provide a graphical desktop interface.
+- Keep its components modular and replaceable.
 
-The development path is:
+## Development Architecture
 
 ```text
 Chat
- ↓
+  ↓
 AI Assistant
- ↓
+  ↓
 Memory + Context
- ↓
+  ↓
 Tools
- ↓
+  ↓
 Agent
- ↓
+  ↓
 Computer Control
- ↓
+  ↓
 Automation
- ↓
+  ↓
 Voice
- ↓
+  ↓
 GUI
- ↓
+  ↓
 Personal AI Assistant
 ```
 
 ---
 
-# 🚀 Current Status
+# 🚀 Project Status
 
-| Phase | Component        | Status         |
-| ----- | ---------------- | -------------- |
-| 01    | Environment      | ✅ Complete    |
-| 02    | AI Core          | ✅ Complete    |
-| 03    | Smart Memory     | ✅ Complete    |
-| 04    | Tools            | ✅ Complete    |
-| 05    | Agent            | ✅ Complete    |
-| 06    | Computer Control | 🟡 In Progress |
-| 07    | Automation       | ⚪ Planned     |
-| 08    | Voice            | ⚪ Planned     |
-| 09    | GUI              | ⚪ Planned     |
+| Phase | Component                   | Status         |
+| ----- | --------------------------- | -------------- |
+| 01    | Environment & Project Setup | ✅ Complete    |
+| 02    | AI Core                     | ✅ Complete    |
+| 03    | Smart Memory & Context      | ✅ Complete    |
+| 04    | Tool System                 | ✅ Complete    |
+| 05    | Agent Architecture          | ✅ Implemented |
+| 06    | Computer Control            | 🟡 In Progress |
+| 07    | Automation                  | ⚪ Planned     |
+| 08    | Voice Interaction           | ⚪ Planned     |
+| 09    | Graphical Interface         | ⚪ Planned     |
 
 ## Current Focus
 
 **Phase 06 — Computer Control**
 
-The Agent and Tool architecture are functional.
+The core Agent and Tool architecture are implemented.
 
-The current focus is making 9Jarvis capable of interacting with the user's computer reliably.
+The current development focus is improving the reliability of computer interaction, especially UI element identification and accurate actions.
 
-The current Computer Control layer includes:
+Current work includes:
 
-- Screenshot capture
-- Screen analysis with Vision
-- UI element detection
-- Bounding-box based element detection
-- Mouse click
-- Mouse movement
-- Double click
-- Scrolling
-- Screen-coordinate validation
+- Screenshot capture.
+- Vision-based screen analysis.
+- UI element detection.
+- Bounding-box extraction.
+- Mouse and keyboard interaction.
+- Screen-coordinate validation.
+- PowerShell-based computer interaction.
+- Investigation of Windows UI Automation.
 
-The next improvement is to investigate **Windows UI Automation** so that 9Jarvis can interact with real UI controls more reliably instead of depending entirely on Vision-estimated coordinates.
+The next milestone is to use native Windows UI controls whenever possible, with Vision-based detection as a fallback.
 
 ---
 
 # 🧩 Current Features
 
-## AI Core
+## 1. AI Core
 
-- AI-powered conversations
-- OpenRouter integration
-- OpenAI SDK
-- Custom system prompt
-- 9Jarvis identity
-- Persian language responses
-- Terminal interface
-- Basic error handling
+The AI Core provides the conversational foundation of 9Jarvis.
 
-## Memory
+Features:
 
-- Persistent local memory
-- Memory detection
-- Memory querying
-- Multiple memory values
-- User memory
-- Project memory
-- Memory context generation
-- Duplicate memory prevention
-- Targeted memory retrieval
-- Relevant context retrieval
+- OpenRouter integration.
+- OpenAI SDK integration.
+- Configurable language models.
+- Custom system prompt.
+- Dedicated 9Jarvis identity.
+- Persian-language responses.
+- Terminal-based interface.
+- Environment-based configuration.
+- Basic error handling.
 
-## Tools
+### Current Models
 
-Current Tool system includes:
+| Component                 | Model                          |
+| ------------------------- | ------------------------------ |
+| Main conversational model | `openai/gpt-oss-20b`           |
+| Vision model              | `deepseek/deepseek-v4.1-flash` |
 
-- Calculator
-- Time
-- Date
-- Random number
-- Web Search
-- Geocoding
-- Weather
-- Currency
-- Application control
-- URL control
-- Mouse control
-- Keyboard control
-- Screenshot capture
+Models are accessed through OpenRouter, allowing the underlying model provider to be changed without redesigning the entire application.
 
-## Agent
+## 2. Smart Memory
 
-The Agent currently supports:
+9Jarvis includes a persistent, local JSON-based memory system.
 
-- Agent decision loop
-- Tool selection
-- Tool execution
-- Tool result history
-- Finish action
-- Maximum step protection
-- Retry handling
-- Invalid response handling
-- Prevention of unnecessary repeated execution
-- Tool result awareness
-- Multi-step tool execution
-- Computer-control tool integration
-- Screenshot → Vision → Action flow
+Features:
 
----
+- Persistent memory between sessions.
+- User information storage.
+- Preference management.
+- Project-related memory.
+- Memory detection.
+- Memory querying.
+- Multiple values per memory category.
+- Relevant context retrieval.
+- Generated memory context.
+- Duplicate memory prevention.
+- Protection against unnecessary memory retrieval and modification.
 
-# 🧠 Memory System
+## 3. Tool System
 
-9Jarvis uses a local JSON-based memory system.
+The Tool System provides the Agent with access to external services, system operations, and computational capabilities.
 
-Memory is stored in:
-
-```text
-memory.json
-```
-
-Example structure:
-
-```json
-{
-  "user": {
-    "name": "Sina",
-    "note": "من دارم روی پروژه 9Jarvis کار می‌کنم",
-    "preference": {
-      "programming_languages": [
-        "C++",
-        "Rust",
-        "Go",
-        "JavaScript",
-        "Python",
-        "TypeScript",
-        "PHP"
-      ]
-    }
-  },
-  "project": {
-    "name": "9Jarvis",
-    "description": "Personal AI assistant"
-  }
-}
-```
-
-The memory layer is responsible for storing and retrieving information that should persist between sessions.
-
-## Memory Components
-
-```text
-memory.js
-memoryDetector.js
-memoryQueryDetector.js
-memory.json
-```
-
-The system supports:
-
-- Single-value memories
-- Multiple values
-- User information
-- Preferences
-- Project information
-- Memory querying
-- Relevant memory retrieval
-- Generated memory context
-- Duplicate prevention
-
-The memory system is designed so unrelated requests do not unnecessarily retrieve or modify memory.
-
----
-
-# 🛠️ Tool System
-
-9Jarvis uses a modular Tool architecture.
-
-The Tool layer separates actions from the Agent's decision-making logic.
-
-Current tools include:
+Current tool registry:
 
 ```text
 calculator
@@ -252,6 +167,121 @@ scroll
 screenshot
 ```
 
+The tools are implemented independently of the Agent's decision-making logic.
+
+## 4. Agent
+
+The Agent is responsible for deciding which actions should be executed and when a task is complete.
+
+Current capabilities:
+
+- Native Function Calling.
+- Tool selection.
+- Tool argument handling.
+- Tool validation.
+- Tool execution.
+- Tool result processing.
+- Multi-step execution.
+- Execution history.
+- Finish action.
+- Retry handling.
+- Invalid response handling.
+- Maximum step protection.
+- Prevention of unnecessary repeated execution.
+- Computer-control integration.
+- Screenshot and Vision-based action flow.
+
+## 5. Computer Control
+
+The Computer Control layer allows 9Jarvis to observe and interact with the user's desktop.
+
+Current capabilities include:
+
+- Screenshot capture.
+- Vision-based screen analysis.
+- UI element detection.
+- Bounding-box extraction.
+- Mouse movement and clicking.
+- Double clicking.
+- Scrolling.
+- Keyboard input.
+- Application management.
+- Screen-coordinate validation.
+- PowerShell-based interaction.
+
+Computer Control is functional but remains under development. Reliable interaction with different application interfaces is still being improved.
+
+---
+
+# 🧠 Memory Architecture
+
+9Jarvis uses a local JSON file to persist selected information.
+
+Memory storage:
+
+```text
+memory.json
+```
+
+Example:
+
+```json
+{
+  "user": {
+    "name": "Sina",
+    "note": "Working on the 9Jarvis project",
+    "preference": {
+      "programming_languages": [
+        "C++",
+        "Rust",
+        "Go",
+        "JavaScript",
+        "Python",
+        "TypeScript",
+        "PHP"
+      ]
+    }
+  },
+  "project": {
+    "name": "9Jarvis",
+    "description": "A modular personal AI assistant"
+  }
+}
+```
+
+## Memory Components
+
+```text
+memory.js
+memoryDetector.js
+memoryQueryDetector.js
+memory.json
+```
+
+### Memory Workflow
+
+```text
+User Input
+    ↓
+Memory Detection
+    ↓
+Determine Memory Intent
+    ↓
+Save / Retrieve / Ignore
+    ↓
+Relevant Memory Context
+    ↓
+Agent / LLM
+```
+
+The memory system distinguishes between information that should be stored, information that should be retrieved, and ordinary requests that do not require memory operations.
+
+---
+
+# 🛠️ Tool Architecture
+
+The Tool layer separates execution from decision-making.
+
 General execution flow:
 
 ```text
@@ -259,95 +289,116 @@ User Request
      ↓
 Agent Decision
      ↓
+Native Function Calling
+     ↓
 Tool Validation
      ↓
 Tool Execution
      ↓
-Tool Result
+Structured Tool Result
      ↓
-Agent / Final Response
+Agent Decision
+     ↓
+Next Tool / Finish
 ```
 
-## Calculator
+## Native Function Calling
 
-Example:
+The Agent uses native function calling through the model API.
+
+Instead of relying exclusively on manually parsing text responses, the model can return structured tool calls with defined arguments.
+
+This architecture provides:
+
+- Structured tool selection.
+- Defined tool argument schemas.
+- Better separation between reasoning and execution.
+- More predictable tool integration.
+- A consistent interface for adding new tools.
+
+Tool calls are validated before execution.
+
+## Available Tools
+
+| Tool                   | Description                                      |
+| ---------------------- | ------------------------------------------------ |
+| `calculator`           | Validates and evaluates mathematical expressions |
+| `time`                 | Returns the current time                         |
+| `date`                 | Returns the current date                         |
+| `random`               | Generates random numbers                         |
+| `web_search`           | Searches external information using Tavily       |
+| `geocode`              | Converts place names into geographic coordinates |
+| `weather`              | Retrieves weather information                    |
+| `currency`             | Retrieves exchange rates                         |
+| `open_app`             | Opens applications                               |
+| `open_url`             | Opens URLs                                       |
+| `close_app`            | Closes applications                              |
+| `press_key`            | Sends keyboard key presses                       |
+| `hotkey`               | Sends keyboard shortcuts                         |
+| `focus_app`            | Focuses an application                           |
+| `type_text`            | Types text into an application                   |
+| `open_default_browser` | Opens the default browser                        |
+| `mouse_click`          | Performs mouse clicks                            |
+| `mouse_move`           | Moves the mouse pointer                          |
+| `mouse_double_click`   | Performs double clicks                           |
+| `scroll`               | Scrolls the active interface                     |
+| `screenshot`           | Captures the primary monitor                     |
+
+### Web Search
+
+The Web Search tool uses the Tavily Search API.
+
+It supports:
+
+- General web searches.
+- News-oriented searches.
+- Structured search results.
+- Search-depth configuration.
+- Retrieval of additional page content for news searches.
+
+News relevance and result quality are still being refined.
+
+### Geocoding
+
+The Geocoding tool converts a location name into coordinates.
 
 ```text
-User: 23 * 17
-9Jarvis: 391
-```
-
-The calculator validates mathematical expressions before execution.
-
-## Time
-
-Example:
-
-```text
-User: ساعت چنده؟
-9Jarvis: ...
-```
-
-## Date
-
-The date tool provides the current date using the configured date formats.
-
-## Random
-
-Example:
-
-```text
-User: یک عدد تصادفی بده
-9Jarvis: ...
-```
-
-## Web Search
-
-9Jarvis can perform external web searches when the requested information requires current or external information.
-
-The Web Search tool returns structured search results to the Agent.
-
-## Geocoding
-
-The Geocoding tool converts a city name into geographic coordinates.
-
-```text
-City
- ↓
+Location Name
+     ↓
+Geocoding API
+     ↓
 Latitude + Longitude
 ```
 
-It is also used internally by the Weather tool.
+### Weather
 
-## Weather
-
-The Weather tool can receive a city name directly.
+The Weather tool uses Open-Meteo.
 
 ```text
 City
- ↓
+  ↓
 Geocoding
- ↓
+  ↓
 Latitude + Longitude
- ↓
-Weather API
- ↓
-Current Weather
+  ↓
+Open-Meteo API
+  ↓
+Weather Information
 ```
 
-Current weather information can include:
+Available information can include:
 
-- Temperature
-- Humidity
-- Weather code
-- Wind speed
-- Local time
+- Temperature.
+- Humidity.
+- Weather conditions.
+- Wind speed.
+- Local time.
 
-## Currency
+### Currency
 
-The Currency tool retrieves exchange rates between supported currencies.
+The Currency tool uses Frankfurter to retrieve exchange-rate information.
 
-Input:
+Example input:
 
 ```json
 {
@@ -356,32 +407,113 @@ Input:
 }
 ```
 
-The tool returns structured information containing:
+The result includes:
+
+- Source currency.
+- Target currency.
+- Exchange rate.
+- Rate date.
+
+---
+
+# 🤖 Agent Architecture
+
+The Agent is the decision-making layer of 9Jarvis.
+
+It determines whether a request requires a tool, selects the appropriate action, evaluates the returned result, and decides whether to continue or finish.
+
+## Agent Execution Loop
 
 ```text
-Source currency
-Target currency
-Exchange rate
-Date
+User Request
+     ↓
+Agent
+     ↓
+Decision
+     ↓
+Tool Call
+     ↓
+Validation
+     ↓
+Execution
+     ↓
+Tool Result
+     ↓
+Agent
+     ↓
+Continue / Finish
 ```
+
+## Supported Actions
+
+### Tool Execution
+
+A tool action contains the selected tool and its arguments.
+
+Conceptual example:
+
+```json
+{
+  "action": "tool",
+  "tool": "calculator",
+  "input": "25 * 4"
+}
+```
+
+### Finish
+
+When the Agent determines that the task is complete, it returns a finish action.
+
+```json
+{
+  "action": "finish"
+}
+```
+
+## Execution Protection
+
+Current configuration:
+
+```js
+MAX_STEPS = 5;
+MAX_RETRIES = 2;
+```
+
+These limits help prevent:
+
+- Infinite execution loops.
+- Unnecessary repeated tool calls.
+- Excessive retries.
+- Uncontrolled multi-step execution.
+- Invalid action processing.
+
+## Agent History
+
+The Agent maintains execution history containing information such as:
+
+```text
+Step
+Tool
+Input
+Success
+Result
+```
+
+For computer interaction, the history can also include screenshot and Vision-related information.
 
 ---
 
 # 🖥️ Computer Control
 
-Computer Control is the current development phase.
+Computer Control is the current major development area.
 
-The goal is to allow 9Jarvis to interact with the operating system and visible applications.
+The objective is to let 9Jarvis observe the desktop, identify interface elements, and perform actions through the operating system.
 
-## Current Capabilities
+## Screenshot Capture
 
-### Screenshot
+The current implementation captures the primary monitor.
 
-9Jarvis can capture the primary monitor.
-
-Current implementation captures the primary screen rather than the secondary monitor.
-
-Example result:
+Example:
 
 ```text
 Screenshot
@@ -389,9 +521,9 @@ Width: 1920
 Height: 1080
 ```
 
-The screenshot is passed to the Vision model for analysis.
+The captured image can be passed to the Vision model for analysis.
 
-### Vision Analysis
+## Vision Analysis
 
 Current Vision model:
 
@@ -399,13 +531,13 @@ Current Vision model:
 deepseek/deepseek-v4.1-flash
 ```
 
-Vision receives the screenshot and returns structured information about visible interactive elements.
+The model analyzes screenshots and identifies visible interface elements.
 
-Example:
+Example response:
 
 ```json
 {
-  "description": "A YouTube page...",
+  "description": "A YouTube page",
   "elements": [
     {
       "name": "Kaydet button (Save)",
@@ -418,11 +550,13 @@ Example:
 }
 ```
 
-The current system uses bounding boxes instead of relying on a single Vision-generated coordinate.
+The system uses bounding boxes to represent detected elements.
 
-### Mouse Control
+A click position can then be calculated from the detected element's coordinates.
 
-Available mouse actions:
+## Mouse and Keyboard Interaction
+
+Mouse tools:
 
 ```text
 mouse_click
@@ -431,11 +565,7 @@ mouse_double_click
 scroll
 ```
 
-Mouse coordinates are validated against the primary screen bounds before execution.
-
-### Keyboard Control
-
-Available keyboard actions include:
+Keyboard tools:
 
 ```text
 press_key
@@ -443,9 +573,11 @@ hotkey
 type_text
 ```
 
-### Application Control
+Coordinates are validated against the primary screen dimensions before mouse actions are executed.
 
-9Jarvis can interact with applications through tools such as:
+## Application Interaction
+
+Application-related tools:
 
 ```text
 open_app
@@ -455,11 +587,13 @@ open_url
 open_default_browser
 ```
 
+PowerShell scripts are also used for testing and supporting certain Windows interaction capabilities.
+
 ---
 
-# 🔬 Computer Control Architecture
+# 🔬 Computer Control Pipeline
 
-The current Computer Control pipeline is:
+Current Vision-based interaction:
 
 ```text
 User Request
@@ -470,234 +604,190 @@ Screenshot
      ↓
 Vision Analysis
      ↓
-Vision Elements
+UI Element Detection
      ↓
 Bounding Box
      ↓
-Calculated Click Point
+Click Position
      ↓
 Mouse Action
+     ↓
+Tool Result
      ↓
 Agent
      ↓
 Finish
 ```
 
-A tested example is:
+Example:
 
 ```text
-User
- ↓
+User:
 "روی Kaydet کلیک کن"
- ↓
-Agent requests screenshot
- ↓
-Vision analyzes screen
- ↓
-Kaydet is detected
- ↓
-Bounding box is returned
- ↓
-Agent selects mouse_click
+
+Agent:
+Requests a screenshot
+
+Vision:
+Analyzes the screenshot
+
+Detection:
+Finds the Kaydet element
+
+Agent:
+Selects the required mouse action
+
+Tool:
+Executes the click
 ```
 
-The complete chain is functional, but click accuracy still requires improvement.
+The complete interaction flow has been tested. However, detection accuracy and reliable interaction across different applications still require improvement.
 
 ---
 
-# 🎯 Next Computer Control Milestone
+# 🎯 Next Milestone: Windows UI Automation
 
-The current limitation is that Vision-based UI detection does not always provide sufficiently accurate click locations.
+Vision-based detection is useful, but it relies on image analysis and estimated screen coordinates.
 
-The next architecture to investigate is **Windows UI Automation**.
+The next improvement is investigating **Windows UI Automation (UIA)**.
 
-Target architecture:
+UI Automation can expose native interface information, including:
+
+- Element names.
+- Control types.
+- Bounding rectangles.
+- Available control patterns.
+- Element properties.
+
+## Target Architecture
 
 ```text
 User Request
      ↓
 Agent
      ↓
-UI Automation
+Windows UI Automation
      ↓
 Element Found?
-   /       \
- Yes        No
-  ↓          ↓
-Exact UI    Screenshot
-Element       ↓
-  ↓         Vision
-Click         ↓
-           Bounding Box
-              ↓
-            Click
+    /       \
+  Yes        No
+   ↓          ↓
+Native UI   Screenshot
+Element        ↓
+   ↓         Vision
+Direct Action  ↓
+            Bounding Box
+                ↓
+             Mouse Action
 ```
 
-This allows:
+The intended approach is:
 
-- Native Windows UI controls to be identified directly
-- Element names to be queried
-- Control types to be detected
-- Bounding rectangles to be retrieved
-- More reliable interaction with applications
+1. Prefer Windows UI Automation for native controls.
+2. Retrieve the exact element and its properties.
+3. Use native control patterns when available.
+4. Use Vision when UI Automation cannot identify the required element.
+5. Validate the result after executing an action.
 
-Vision will remain useful as a fallback for interfaces where UI Automation cannot expose the required element.
+This hybrid architecture should reduce unnecessary dependence on estimated coordinates.
 
 ---
 
-# 🤖 Agent System
+# 🏗️ System Architecture
 
-The Agent is responsible for deciding what action 9Jarvis should take.
-
-Unlike a simple Tool Detector, the Agent can evaluate the current state of a request and decide whether another tool execution is required.
-
-Basic flow:
+The main application coordinates the different layers.
 
 ```text
-User
- ↓
-Agent Decision
- ↓
-Tool
- ↓
-Tool Result
- ↓
-Agent Decision
- ↓
-Tool / Finish
+┌──────────────────────┐
+│         User         │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│       main.js        │
+│  Application Core    │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│        Memory        │
+│  Store / Retrieve    │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│        Agent         │
+│  Decision Making     │
+│  Native Function Call│
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│     Tool Validator   │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│        Tools         │
+│   Execute Actions    │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│     Tool Results     │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│     Agent / LLM      │
+│  Continue or Finish  │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│    Final Response    │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│         User         │
+└──────────────────────┘
 ```
 
-## Agent Actions
+## Component Responsibilities
 
-### Execute Tool
+| Component                | Responsibility                                 |
+| ------------------------ | ---------------------------------------------- |
+| `main.js`                | Coordinates the application                    |
+| `config.js`              | Loads and manages configuration                |
+| `memory.js`              | Stores and retrieves persistent memory         |
+| `memoryDetector.js`      | Detects information that may need to be stored |
+| `memoryQueryDetector.js` | Detects memory-related queries                 |
+| `agent.js`               | Makes decisions and manages execution          |
+| `toolValidator.js`       | Validates tool calls and arguments             |
+| `tools.js`               | Implements tool operations                     |
 
-```json
-{
-  "action": "tool",
-  "tool": "calculator",
-  "input": "25 * 4"
-}
-```
-
-### Finish
-
-```json
-{
-  "action": "finish"
-}
-```
-
-The Agent is protected by:
-
-```text
-MAX_STEPS = 5
-MAX_RETRIES = 2
-```
-
-These protections help prevent:
-
-- Infinite loops
-- Repeated tool execution
-- Invalid action responses
-- Empty model responses
-- Uncontrolled execution
-
-## Agent History
-
-Each executed tool is recorded in Agent history.
-
-```text
-Step
-Tool
-Input
-Success
-Result
-```
-
-For Computer Control, history can also contain:
-
-```text
-Screenshot
-Vision Analysis
-Vision Elements
-Screenshot Size
-Vision Error
-```
-
-This allows the Agent to reason over the current computer state.
-
----
-
-# 🏗️ Architecture
-
-The current architecture is:
-
-```text
-┌──────────────────┐
-│       User       │
-└────────┬─────────┘
-         ↓
-┌──────────────────┐
-│     main.js      │
-│ Application Core │
-└────────┬─────────┘
-         ↓
-┌──────────────────┐
-│      Memory      │
-│ Store / Retrieve │
-└────────┬─────────┘
-         ↓
-┌──────────────────┐
-│      Agent       │
-│ Decision Making  │
-└────────┬─────────┘
-         ↓
-┌──────────────────┐
-│      Tools       │
-│ Execute Actions  │
-└────────┬─────────┘
-         ↓
-┌──────────────────┐
-│   Tool Results   │
-└────────┬─────────┘
-         ↓
-┌──────────────────┐
-│    Final LLM     │
-│ Response Builder │
-└────────┬─────────┘
-         ↓
-┌──────────────────┐
-│       User       │
-└──────────────────┘
-```
-
-The important separation is:
+The main architectural principle is separation of responsibilities.
 
 ```text
 Memory
-→ stores and retrieves information
+  → Stores and retrieves information
 
 Agent
-→ decides what action should happen
+  → Decides what action should happen
+
+Tool Validator
+  → Validates requested operations
 
 Tools
-→ perform external or computational actions
+  → Perform computational and external actions
 
 Tool Results
-→ provide real execution data
+  → Provide actual execution data
 
-Final LLM
-→ turns results into natural language
+LLM
+  → Understands language and generates responses
 
 main.js
-→ coordinates the application
+  → Coordinates the application
 ```
 
 ---
 
 # 📁 Project Structure
 
-Current core structure:
+The main project structure:
 
 ```text
 9jarvis/
@@ -705,13 +795,16 @@ Current core structure:
 ├── .env
 ├── .env.example
 ├── .gitignore
+│
 ├── README.md
 ├── CHANGELOG.md
+│
 ├── package.json
 ├── package-lock.json
 │
 ├── config.js
 ├── main.js
+├── agent.js
 │
 ├── memory.js
 ├── memoryDetector.js
@@ -722,171 +815,186 @@ Current core structure:
 ├── toolValidator.js
 ├── tools.js
 │
-├── agent.js
-└── testAgent.js
+├── test-agent.js
+│
+└── PowerShell test scripts
 ```
 
-`.env` contains local secrets and must never be committed.
+The structure may evolve as new modules and tests are introduced.
 
 ---
 
-# ⚙️ Setup
+# ⚙️ Installation
 
 ## Requirements
 
-- Windows
-- Node.js
-- npm
-- Git
-- OpenRouter API key
+- Windows.
+- Node.js.
+- npm.
+- Git.
+- OpenRouter API key.
+- Tavily API key for Web Search.
 
-Some external tools may require additional API keys.
+Additional external services may be introduced as the project evolves.
 
-## Install
-
-Clone the repository:
+## 1. Clone the Repository
 
 ```bash
 git clone https://github.com/Aiakos13/9Jarvis.git
 cd 9Jarvis
 ```
 
-Install dependencies:
+## 2. Install Dependencies
 
 ```bash
 npm install
 ```
 
-Create the environment file:
+## 3. Configure Environment Variables
 
-```bash
-copy .env.example .env
+Create a local environment file:
+
+```powershell
+Copy-Item .env.example .env
 ```
 
-Add your API key to `.env`:
+Configure the required API keys:
 
 ```env
-OPENROUTER_API_KEY=your_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key
+TAVILY_API_KEY=your_tavily_api_key
 ```
 
-Additional API keys should also be stored in `.env` when required.
-
-Never commit `.env` to GitHub.
+Never commit `.env` or expose API keys.
 
 ---
 
 # 💬 Usage
 
-Start 9Jarvis:
+Start the application:
 
 ```bash
 node main.js
 ```
 
-Startup:
+Expected startup message:
 
 ```text
 🤖 9Jarvis is ready...
 💬 Type...
 ```
 
-Example:
+## Example Interactions
+
+### Conversation
 
 ```text
-You: ساعت چنده؟
-9Jarvis: ...
+You: سلام
+9Jarvis: سلام! چطور می‌تونم کمک کنم؟
 ```
+
+### Calculator
 
 ```text
 You: 23 * 17
 9Jarvis: 391
 ```
 
+### Memory
+
 ```text
 You: اسم من چیه؟
 9Jarvis: اسم شما سینا است.
 ```
 
-Computer Control example:
+### Time
+
+```text
+You: ساعت چنده؟
+9Jarvis: ...
+```
+
+### Weather
+
+```text
+You: هوای Berlin چطوره؟
+9Jarvis: ...
+```
+
+### Computer Control
 
 ```text
 You: روی Kaydet کلیک کن
 ```
 
-The Agent can then inspect the screen and determine the required computer action.
+The Agent can inspect the screen, identify the requested element, and select an appropriate computer interaction tool.
 
 Exit:
 
 ```text
 You: exit
-
-👋 خداحافظ سینا!
 ```
 
 ---
 
-# 🧪 Validation
+# 🧪 Testing & Validation
 
-Each major component is tested independently before deeper integration.
+9Jarvis is developed incrementally. Components are tested independently before deeper integration.
 
-## Memory
+## Agent Tests
 
-```text
-Memory saving              ✅
-Memory retrieval           ✅
-Memory queries             ✅
-Multiple memory values     ✅
-Duplicate prevention       ✅
-User memory                ✅
-Project memory             ✅
-Relevant context retrieval ✅
-Memory pollution fixes     ✅
-```
-
-## Tools
+The dedicated Agent test suite has passed:
 
 ```text
-calculator        ✅
-time              ✅
-date              ✅
-random            ✅
-web_search        ✅
-geocode           ✅
-weather           ✅
-currency          ✅
-application tools ✅
-keyboard tools    ✅
-mouse tools       ✅
-screenshot        ✅
+Parser Tests:  8/8
+Native Tests: 11/11
+-------------------
+Total:       19/19
 ```
 
-## Agent
+These tests cover the tested parsing and native tool-calling behavior.
 
-```text
-Tool selection                 ✅
-Tool execution                 ✅
-History tracking               ✅
-Finish detection               ✅
-Retry handling                 ✅
-Maximum step protection        ✅
-Repeated execution prevention ✅
-Tool result handling           ✅
-Computer Control integration  ✅
-Screenshot analysis            ✅
-Vision element extraction      ✅
+Run the Agent test suite:
+
+```bash
+node test-agent.js
 ```
 
-## Current Limitation
+## Code Validation
 
-Computer Control is functional but not yet considered complete.
+JavaScript syntax checks can be performed with:
 
-The current area requiring improvement is:
-
-```text
-Reliable UI element interaction
+```bash
+node --check main.js
+node --check agent.js
+node --check tools.js
+node --check toolValidator.js
+node --check memory.js
 ```
 
-especially when exact click positioning matters.
+## Validation Overview
+
+| Component               | Current Validation                              |
+| ----------------------- | ----------------------------------------------- |
+| AI Core                 | ✅ Implemented and tested                       |
+| Memory                  | ✅ Core operations tested                       |
+| Native Function Calling | ✅ Tested                                       |
+| Tool Validation         | ✅ Implemented and tested                       |
+| Calculator              | ✅ Tested                                       |
+| Time & Date             | ✅ Tested                                       |
+| Web Search              | 🟡 Functional; relevance improvements ongoing   |
+| Geocoding               | ✅ Tested                                       |
+| Weather                 | ✅ Tested                                       |
+| Currency                | ✅ Tested                                       |
+| Application Control     | ✅ Tested                                       |
+| Keyboard Control        | ✅ Tested                                       |
+| Mouse Control           | ✅ Tested                                       |
+| Screenshot              | ✅ Tested                                       |
+| Vision Analysis         | ✅ Tested                                       |
+| Computer Control        | 🟡 Functional; reliability improvements ongoing |
+| Windows UI Automation   | 🟡 Under investigation                          |
+
+A component being implemented does not necessarily mean that every possible application, input, or operating-system scenario has been validated.
 
 ---
 
@@ -894,10 +1002,10 @@ especially when exact click positioning matters.
 
 ## Phase 01 — Environment
 
-- [x] Node.js
-- [x] npm
+- [x] Node.js setup
+- [x] npm setup
 - [x] Project structure
-- [x] Git
+- [x] Git initialization
 - [x] GitHub repository
 - [x] Environment configuration
 
@@ -915,23 +1023,23 @@ especially when exact click positioning matters.
 - [x] Persistent memory
 - [x] Memory detection
 - [x] Memory querying
-- [x] Multiple values
+- [x] Multiple memory values
 - [x] Duplicate prevention
 - [x] User memory
 - [x] Project memory
-- [x] Memory context
+- [x] Memory context generation
 - [x] Relevant memory retrieval
 - [x] Memory pollution prevention
 
 ## Phase 04 — Tools
 
-- [x] Tool architecture
+- [x] Modular Tool architecture
 - [x] Tool validation
 - [x] Tool execution
 - [x] Calculator
 - [x] Time
 - [x] Date
-- [x] Random
+- [x] Random number
 - [x] Web Search
 - [x] Geocoding
 - [x] Weather
@@ -940,28 +1048,31 @@ especially when exact click positioning matters.
 - [x] URL control
 - [x] Keyboard control
 - [x] Mouse control
-- [x] Screenshot
+- [x] Screenshot capture
 
 ## Phase 05 — Agent
 
-- [x] Agent loop
+- [x] Agent execution loop
+- [x] Native Function Calling
 - [x] Tool selection
+- [x] Tool argument handling
+- [x] Tool validation
 - [x] Tool execution
 - [x] Tool history
 - [x] Finish action
 - [x] Retry handling
-- [x] Loop protection
-- [x] Successful tool result handling
+- [x] Maximum step protection
+- [x] Invalid response handling
 - [x] Repeated execution prevention
-- [x] Screenshot integration
-- [x] Vision integration
-- [x] Computer-control tool integration
+- [x] Tool result processing
+- [x] Multi-step execution
+- [x] Computer-control integration
 
 ## Phase 06 — Computer Control
 
 - [x] Screenshot capture
 - [x] Primary-monitor capture
-- [x] Screen coordinate validation
+- [x] Screen-coordinate validation
 - [x] Mouse click
 - [x] Mouse movement
 - [x] Double click
@@ -970,18 +1081,17 @@ especially when exact click positioning matters.
 - [x] Application actions
 - [x] Vision screenshot analysis
 - [x] Vision element detection
-- [x] Bounding-box detection
+- [x] Bounding-box extraction
 - [x] Agent integration
 - [ ] Improve click accuracy
 - [ ] Investigate Windows UI Automation
-- [ ] Use UI Automation as primary interaction method where possible
-- [ ] Keep Vision as fallback
-- [ ] Test multiple applications and UI types
+- [ ] Use UI Automation as the primary method where possible
+- [ ] Keep Vision as a fallback
+- [ ] Validate actions through post-action inspection
+- [ ] Test different applications and UI types
 - [ ] Complete Computer Control validation
 
 ## Phase 07 — Automation
-
-Planned:
 
 - [ ] Scheduled tasks
 - [ ] Triggers
@@ -989,101 +1099,103 @@ Planned:
 - [ ] Background workflows
 - [ ] Event-based automation
 - [ ] Automation management
+- [ ] Task execution monitoring
 
 ## Phase 08 — Voice
-
-Planned:
 
 - [ ] Speech-to-text
 - [ ] Text-to-speech
 - [ ] Voice commands
-- [ ] Continuous interaction
+- [ ] Continuous voice interaction
+- [ ] Voice activity detection
 
 ## Phase 09 — GUI
 
-Planned:
-
 - [ ] Graphical interface
+- [ ] Desktop application
+- [ ] Conversation interface
 - [ ] Visual assistant
 - [ ] Animated Jarvis interface
-- [ ] Desktop interface
-- [ ] Hardware/device integration
+- [ ] Tool and task monitoring
+- [ ] Hardware and device integration
 
 ---
 
 # 🔄 Development Workflow
 
-Development follows an incremental cycle:
+The project follows an incremental development cycle:
 
 ```text
-Build
- ↓
+Understand
+    ↓
+Implement
+    ↓
 Test
- ↓
+    ↓
 Inspect Output
- ↓
+    ↓
 Verify
- ↓
+    ↓
 Commit
- ↓
+    ↓
 Push
- ↓
+    ↓
 Update Documentation
 ```
 
-The core development rule is:
+The core development rule:
 
 > One Change → Test → Inspect Output → Next Change
 
-A new capability should not be added until the current layer is stable enough to support it.
+Each new capability should be tested before additional complexity is introduced.
 
-Each major feature should remain modular so it can later be replaced or upgraded without rebuilding the entire project.
+This approach helps identify problems early and keeps the architecture easier to understand, debug, and maintain.
 
 ---
 
 # 📜 Development Principles
 
-## Modular
+## 1. Modular Architecture
 
-Each system should have a clear responsibility.
+Every component should have a clear responsibility and a well-defined interface.
 
-```text
-Memory → stores information
-Tools → perform actions
-Agent → makes decisions
-LLM → handles language and reasoning
-main.js → coordinates the application
-```
+## 2. Incremental Development
 
-## Incremental
+Build the system layer by layer instead of attempting to implement the final assistant at once.
 
-9Jarvis is built layer by layer instead of attempting to create the final assistant immediately.
+## 3. Test Before Expanding
 
-## Test First
+Test new functionality independently before integrating it into the larger system.
 
-New functionality should be tested independently before being integrated into the main application.
+## 4. Reusable Components
 
-## Local and Portable
+Models, tools, APIs, and subsystems should be replaceable without requiring a complete architectural rewrite.
 
-Where practical, user memory and application data remain under the user's control.
+## 5. Local Data Control
 
-## Simple Before Advanced
+Where practical, user memory and application data should remain locally accessible and under the user's control.
 
-The project prioritizes a working simple implementation before adding unnecessary complexity.
+## 6. Simple Before Advanced
 
-## Replaceable Components
+Prefer a working and understandable implementation over unnecessary complexity.
 
-Models, tools, routing logic, and subsystems should be replaceable whenever possible.
+## 7. Reuse Existing Technology
 
-## Reuse Existing Technology
+Build the core architecture and important logic while using mature libraries, APIs, and operating-system capabilities where appropriate.
 
-9Jarvis should implement its own architecture and important logic while using mature libraries, APIs, and system capabilities where reinventing them would provide little value.
+## 8. Controlled Execution
+
+Tool execution should be validated, bounded, and observable.
+
+## 9. Evidence-Based Development
+
+A feature should be considered complete only when its behavior has been tested and its results inspected.
 
 ---
 
 # 📌 Current Mission
 
-The current mission is to build a reliable personal Agent capable of understanding tasks, retrieving relevant context, selecting tools, executing actions, and interacting with the computer.
+The immediate mission is to improve Computer Control reliability.
 
 Current architecture:
 
@@ -1101,40 +1213,30 @@ Tool / Action Results
 Final Response
 ```
 
-The immediate milestone is:
+The next milestone:
 
 ```text
 Computer Control
-      ↓
-Reliable UI Interaction
-      ↓
+       ↓
 Windows UI Automation
-      ↓
+       ↓
+Native UI Element Detection
+       ↓
+Reliable UI Actions
+       ↓
 Vision Fallback
-      ↓
-Reliable Computer Agent
+       ↓
+Post-Action Verification
 ```
 
-After Computer Control becomes sufficiently reliable, development can move toward:
+Once Computer Control reaches a reliable level, development can move toward Automation, Voice, and GUI.
 
-```text
-Computer Control
-      ↓
-Automation
-      ↓
-Voice
-      ↓
-GUI
-      ↓
-Personal AI Assistant
-```
-
-The long-term mission is to turn 9Jarvis into a modular personal AI assistant capable of understanding the user, remembering useful information, choosing the right tools, executing actions, handling multi-step tasks, interacting with the computer, and eventually automating parts of the user's digital environment.
+The long-term objective is to create a modular personal AI assistant that can understand the user, remember useful information, reason about tasks, select tools, execute actions, interact with the computer, and gradually automate parts of the user's digital environment.
 
 ---
 
 # 📄 License
 
-This project is currently developed as a personal project.
+9Jarvis is currently developed as a personal open-source project.
 
-License information may be added as the project evolves.
+A formal license will be added as the project evolves.

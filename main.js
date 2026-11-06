@@ -70,6 +70,7 @@ Vision Error: ${JSON.stringify(item.visionError || null)}
 
   const response = await client.chat.completions.create({
     model: "openai/gpt-oss-20b",
+    max_tokens: 3000,
     messages: [
       {
         role: "system",
@@ -173,7 +174,18 @@ RESPONSE STYLE:
       },
     ],
   });
-
+  console.log(
+    "FINAL RESPONSE DEBUG:",
+    JSON.stringify(
+      {
+        finish_reason: response?.choices?.[0]?.finish_reason,
+        message: response?.choices?.[0]?.message,
+        usage: response?.usage,
+      },
+      null,
+      2,
+    ),
+  );
   const content = response?.choices?.[0]?.message?.content;
 
   if (!content || typeof content !== "string" || !content.trim()) {

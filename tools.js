@@ -85,7 +85,7 @@ async function webSearch(query) {
       };
     }
     const isNewsQuery =
-      /اخبار|خبرهای|خبر|تحولات اخیر|آخرین.*(هوش مصنوعی|فناوری)|latest news|recent news/i.test(
+      /اخبار|خبرهای|خبر|تحولات اخیر|آخرین.*(هوش مصنوعی|فناوری)|\bnews\b|\blatest\b|\brecent\b/i.test(
         query,
       );
     const response = await fetch("https://api.tavily.com/search", {
@@ -111,22 +111,73 @@ async function webSearch(query) {
       };
     }
     const data = await response.json();
-
+    console.log(
+      "TAVILY RAW RESULTS:",
+      JSON.stringify(
+        (data.results || []).map((item) => ({
+          title: item.title,
+          url: item.url,
+          published_date: item.published_date,
+        })),
+        null,
+        2,
+      ),
+    );
     let results = data.results || [];
 
     if (isNewsQuery) {
-      const aiKeywords =
-        /هوش مصنوعی|هوش‌مصنوعی|artificial intelligence|\bAI\b|machine learning|یادگیری ماشین|مدل زبانی|مدل هوش مصنوعی|هوش مولد|generative ai/i;
-
       results = results.filter((item) => {
-        const text = `${item.title || ""} ${item.content || ""}`;
-        return aiKeywords.test(text);
+        const url = item.url || "";
+        const publishedDate = item.published_date;
+
+        // Remove knowledge graph and non-news pages.
+        if (/tavily\.com\/knowledge\//i.test(url)) {
+          return false;
+        }
+
+        // News must have a valid publication date.
+        if (!publishedDate || Number.isNaN(Date.parse(publishedDate))) {
+          return false;
+        }
+
+        // Keep only results within the requested 30-day window.
+        const publicationTime = Date.parse(publishedDate);
+        const now = Date.now();
+        const ageInDays = (now - publicationTime) / (1000 * 60 * 60 * 24);
+
+        return ageInDays >= 0 && ageInDays <= 30;
       });
     }
+    console.log(
+      "TAVILY FILTERED RESULTS:",
+      JSON.stringify(
+        results.map((item) => ({
+          title: item.title,
+          url: item.url,
+          published_date: item.published_date,
+          content: item.content,
+          raw_content: item.raw_content,
+        })),
+        null,
+        2,
+      ),
+    );
+
+    const compactResults = results.map((item) => ({
+      title: item.title || "",
+      url: item.url || "",
+      published_date: item.published_date || null,
+      content: (item.content || "").slice(0, 3000),
+    }));
 
     return {
       success: true,
-      result: results,
+      result: compactResults,
+    };
+
+    return {
+      success: true,
+      result: compactResults,
     };
   } catch (error) {
     return {

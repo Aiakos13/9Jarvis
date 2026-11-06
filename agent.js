@@ -280,12 +280,27 @@ DATE:
 RANDOM:
 - Use only when the user asks for a random number.
 - Input must be an empty string.
-
 WEB SEARCH:
-- Use for general web searches, latest information, websites, public information, or facts requiring web access.
-- Do not use for weather.
-- Input must be a concise search query.
-
+- Use only information from the successful web_search tool result.
+- Treat each top-level object in the search result array as one search result.
+- Never treat links, titles, dates, or articles mentioned inside a result's content as separate search results.
+- Every news item must correspond to an actual top-level search result object.
+- Use the exact title, URL, and published_date provided by that object.
+- Never invent, modify, or estimate publication dates.
+- Never create additional news items using your own knowledge.
+- Never add facts that are not supported by that specific result object.
+- Summarize each news item using only its own content.
+- Do not combine information from unrelated search results into one news item.
+- Do not use related articles, suggested links, or navigation content as search results.
+- Prioritize results within the requested date range.
+- Distinguish publication dates from event dates.
+- If a publication date is unavailable, clearly mark it as unavailable.
+- Select distinct news stories instead of repeating the same story.
+- Include the exact source title and URL for each news item.
+- If there are not enough valid results, return fewer news items.
+- Never fill the list with unverified or related articles.
+- If search results do not contain enough information, clearly state the limitation.
+- Do not claim that the search failed if results were returned.
 WEATHER:
 - Use for weather, temperature, rain, wind, humidity, or current weather conditions.
 - Input must contain only the city name.

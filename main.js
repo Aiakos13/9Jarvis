@@ -2,7 +2,7 @@ const readline = require("readline");
 const OpenAI = require("openai");
 
 const config = require("./config");
-
+const { calculator } = require("./tools");
 const { saveDetectedMemory, buildMemoryContext } = require("./memory");
 
 const { detectMemoryQuery } = require("./memoryQueryDetector");
@@ -206,7 +206,42 @@ async function askUser(userInput) {
     if (!cleanInput) {
       return;
     }
+    // ========================================
+    // Direct Calculator
+    // ========================================
 
+    const calculatorMatch =
+      cleanInput.match(
+        /ماشین\s*حساب\s+([0-9+\-*/%().\s]+?)(?=\s*(?:را\s*)?(?:محاسبه\s*کن|حساب\s*کن)|$)/i,
+      ) ||
+      (/^[\d\s()+\-*/%.]+$/.test(cleanInput) &&
+      /[\d)]\s*[+\-*/%]\s*[\d(]/.test(cleanInput)
+        ? [cleanInput, cleanInput]
+        : null);
+
+    if (calculatorMatch) {
+      const result = calculator(calculatorMatch[1]);
+
+      if (result.success) {
+        console.log(`9Jarvis: ${result.result}`);
+      } else {
+        console.log(`9Jarvis: خطا در محاسبه: ${result.error}`);
+      }
+
+      return;
+    }
+
+    if (calculatorMatch) {
+      const result = calculator(calculatorMatch[1]);
+
+      if (result.success) {
+        console.log(`9Jarvis: ${result.result}`);
+      } else {
+        console.log(`9Jarvis: خطا در محاسبه: ${result.error}`);
+      }
+
+      return;
+    }
     // ========================================
     // 1. Detect and save memory
     // ========================================
@@ -285,9 +320,24 @@ async function askUser(userInput) {
     const agentHistory = Array.isArray(agentResult.history)
       ? agentResult.history
       : [];
-
     // ========================================
-    // 4. Generate final response
+    // 4. Direct response for simple tools
+    // ========================================
+
+    const simpleTools = ["calculator", "time", "date", "random"];
+
+    const lastHistoryItem = agentHistory.at(-1);
+
+    if (
+      agentHistory.length === 1 &&
+      lastHistoryItem?.success &&
+      simpleTools.includes(lastHistoryItem.tool)
+    ) {
+      console.log(`9Jarvis: ${lastHistoryItem.result}`);
+      return;
+    }
+    // ========================================
+    // 5. Generate final response
     // ========================================
 
     const finalResponse = await generateFinalResponse(
@@ -303,7 +353,7 @@ async function askUser(userInput) {
 }
 
 // ========================================
-// CLI
+// 6.CLI
 // ========================================
 
 const rl = readline.createInterface({

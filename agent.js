@@ -9,12 +9,18 @@ const client = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
 });
 
+const localClient = new OpenAI({
+  apiKey: "ollama",
+  baseURL: config.ollamaBaseURL,
+});
+
 const MODEL = "openai/gpt-oss-20b";
+const LOCAL_MODEL = config.ollamaModel;
 const VISION_MODEL = "deepseek/deepseek-v4.1-flash";
 
 const MAX_STEPS = 5;
 const MAX_RETRIES = 2;
-const REQUEST_TIMEOUT = 30000;
+const REQUEST_TIMEOUT = 120000;
 
 const AGENT_MAX_TOKENS = 2000;
 const VISION_MAX_TOKENS = 3000;
@@ -482,7 +488,7 @@ function buildUserContent(userInput, history) {
   return [
     {
       type: "text",
-      text: `${userInput}\n\n${buildHistoryContext(history)}`,
+      text: `${userInput}\n\n${buildHistoryContext(history)}\n\n/no_think`,
     },
   ];
 }
@@ -912,17 +918,19 @@ function normalizeNativeToolCall(functionName, rawArguments) {
 }
 
 async function askAgentForNextAction(userInput, history) {
-  const response = await client.chat.completions.create(
+  const requestStartedAt = Date.now();
+
+  console.log(
+    `⏱️ LOCAL AGENT REQUEST START | History: ${history.length} | Step: ${history.length + 1}`,
+  );
+
+  const response = await localClient.chat.completions.create(
     {
-      model: MODEL,
+      model: LOCAL_MODEL,
       max_tokens: AGENT_MAX_TOKENS,
       tools: NATIVE_TOOLS,
       tool_choice: "auto",
       parallel_tool_calls: false,
-      reasoning: {
-        effort: "low",
-        exclude: true,
-      },
       messages: [
         {
           role: "system",
@@ -939,9 +947,14 @@ async function askAgentForNextAction(userInput, history) {
     },
   );
 
+  console.log(
+    `⏱️ LOCAL AGENT REQUEST END: ${((Date.now() - requestStartedAt) / 1000).toFixed(2)}s`,
+  );
+
   const choice = response?.choices?.[0];
   const message = choice?.message;
   const toolCalls = message?.tool_calls;
+
   if (Array.isArray(toolCalls) && toolCalls.length === 1) {
     const toolCall = toolCalls[0];
 
@@ -961,15 +974,24 @@ async function askAgentForNextAction(userInput, history) {
   const content = message?.content;
 
   if (typeof content === "string" && content.trim()) {
-    console.log("🤖 AGENT RAW RESPONSE:", content);
+    console.log("🤖 LOCAL AGENT RAW RESPONSE:", content);
+
+    const lastHistoryItem = history[history.length - 1];
+
+    if (lastHistoryItem?.success) {
+      return JSON.stringify({
+        action: "finish",
+        response: content.trim(),
+      });
+    }
+
     return content.trim();
   }
 
   const finishReason = choice?.finish_reason || "unknown";
-  const nativeFinishReason = choice?.native_finish_reason || "unknown";
 
   throw new Error(
-    `Agent returned no usable content. finish_reason=${finishReason}, native_finish_reason=${nativeFinishReason}`,
+    `Local agent returned no usable content. finish_reason=${finishReason}`,
   );
 }
 

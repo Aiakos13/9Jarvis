@@ -2,7 +2,13 @@ const readline = require("readline");
 const OpenAI = require("openai");
 
 const config = require("./config");
-const { calculator } = require("./tools");
+const {
+  calculator,
+  getCurrentTime,
+  getCurrentDate,
+  getRandomNumber,
+} = require("./tools");
+
 const { saveDetectedMemory, buildMemoryContext } = require("./memory");
 
 const { detectMemoryQuery } = require("./memoryQueryDetector");
@@ -240,6 +246,42 @@ async function askUser(userInput) {
         console.log(`9Jarvis: خطا در محاسبه: ${result.error}`);
       }
 
+      return;
+    }
+    // ========================================
+    // Direct Time, Date and Random
+    // ========================================
+
+    if (
+      /(?:الان\s*ساعت|ساعت\s*چنده|ساعت\s*چند\s*است|وقت\s*فعلی)/i.test(
+        cleanInput,
+      )
+    ) {
+      const result = getCurrentTime();
+
+      console.log(`9Jarvis: ساعت ${result.result}`);
+      return;
+    }
+
+    if (
+      /(?:تاریخ\s*(?:امروز|فعلی)|امروز\s*چندمه|امروز\s*چندم|امروز\s*چه\s*روزی)/i.test(
+        cleanInput,
+      )
+    ) {
+      const result = getCurrentDate();
+
+      console.log(`9Jarvis: تاریخ ${result.result}`);
+      return;
+    }
+
+    if (
+      /(?:عدد\s*(?:تصادفی|رندوم)|(?:یه|یک)\s*عدد\s*(?:تصادفی|رندوم))/i.test(
+        cleanInput,
+      )
+    ) {
+      const result = getRandomNumber();
+
+      console.log(`9Jarvis: ${result.result}`);
       return;
     }
     // ========================================

@@ -946,7 +946,7 @@ async function askAgentForNextAction(userInput, history) {
       timeout: REQUEST_TIMEOUT,
     },
   );
-
+  console.log("LOCAL AGENT TOKEN USAGE:", response.usage);
   console.log(
     `⏱️ LOCAL AGENT REQUEST END: ${((Date.now() - requestStartedAt) / 1000).toFixed(2)}s`,
   );

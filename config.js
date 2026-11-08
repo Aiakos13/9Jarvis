@@ -1,4 +1,4 @@
-require("dotenv").config({ override: true });
+﻿require("dotenv").config({ override: true });
 
 const config = {
   openRouterApiKey: process.env.OPENROUTER_API_KEY,
@@ -7,7 +7,7 @@ const config = {
     process.env.OLLAMA_BASE_URL || "http://localhost:11434/v1",
 
   ollamaModel:
-    process.env.OLLAMA_MODEL || "qwen3:4b-fast",
+    process.env.OLLAMA_MODEL || "qwen3:4b-instruct",
 };
 
 if (!config.openRouterApiKey) {

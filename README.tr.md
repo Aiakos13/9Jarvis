@@ -2,7 +2,7 @@
 
 > Sohbet yapay zekâsı, yerel bellek, araçlar ve deneysel Windows masaüstü etkileşimi sunan modüler kişisel asistan.
 
-**Diller:** English · [فارسی](README.fa.md) · Türkçe
+**Diller:** [English](README.md) · [فارسی](README.fa.md) · Türkçe
 
 9Jarvis, istekleri anlayabilen, ilgili bağlamı getirebilen, araçları kullanabilen ve Windows masaüstüyle etkileşim kurabilen kişisel bir yapay zekâ asistanını inceleyen herkese açık bir projedir. Bazı özellikler uygulanmıştır; masaüstü etkileşimi hâlâ deneysel olup uygulamaya göre farklı davranabilir.
 

@@ -1,4 +1,4 @@
-const { exec, execFile, execFileSync } = require("child_process");
+const { exec, execFile, execFileSync, spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
@@ -475,6 +475,16 @@ async function getCurrencyRate(input) {
   }
 }
 
+// Constant script. The application name is read from $env:J9_APP_NAME and is only
+// compared with -eq (no wildcard or regex matching) against the Start menu entries.
+const START_MENU_LAUNCH_SCRIPT = [
+  "$ErrorActionPreference = 'Stop'",
+  "$name = $env:J9_APP_NAME",
+  "$app = Get-StartApps | Where-Object { $_.Name -eq $name } | Select-Object -First 1",
+  "if (-not $app) { [Console]::Error.WriteLine('Application not found in Start menu'); exit 1 }",
+  "Start-Process -FilePath ('shell:AppsFolder\\' + $app.AppID)",
+].join("\n");
+
 async function openApp(app) {
   if (typeof app !== "string" || !app.trim()) {
     return {
@@ -485,15 +495,61 @@ async function openApp(app) {
 
   const cleanApp = app.trim();
 
+  // Accepted forms. No shell command string is ever built from the input.
+  //  1) Absolute local path to an .exe (spaces and parentheses allowed)
+  //     -> spawn() directly, shell: false.
+  //  2) Plain application name without spaces
+  //     -> cmd.exe `start` with separate arguments; the pattern contains no
+  //        cmd metacharacters, quotes or spaces.
+  //  3) Start menu display name, e.g. "Visual Studio Code" (spaces allowed)
+  //     -> constant PowerShell script; the name travels only in an environment
+  //        variable and is only compared with -eq against Get-StartApps.
+  const isExecutablePath = /^[a-zA-Z]:\\[^"<>|?*:\x00-\x1f]+\.exe$/i.test(cleanApp);
+  const isAppName = /^[a-zA-Z0-9][a-zA-Z0-9_.+-]*$/.test(cleanApp);
+  const isStartMenuName = /^[\p{L}\p{N}][\p{L}\p{N} _.+()-]{0,99}$/u.test(cleanApp);
+
+  if (!isExecutablePath && !isAppName && !isStartMenuName) {
+    return {
+      success: false,
+      error: "Invalid application name",
+    };
+  }
+
   try {
     await new Promise((resolve, reject) => {
-      exec(`start "" "${cleanApp}"`, (error) => {
-        if (error) {
-          reject(error);
-        } else {
+      if (isExecutablePath) {
+        const child = spawn(cleanApp, [], {
+          detached: true,
+          stdio: "ignore",
+          shell: false,
+        });
+        child.once("error", reject);
+        child.once("spawn", () => {
+          child.unref();
           resolve();
-        }
-      });
+        });
+      } else if (isAppName) {
+        execFile("cmd.exe", ["/d", "/c", "start", "", cleanApp], (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        });
+      } else {
+        execFile(
+          "powershell.exe",
+          ["-NoProfile", "-Command", START_MENU_LAUNCH_SCRIPT],
+          { env: { ...process.env, J9_APP_NAME: cleanApp } },
+          (error, stdout, stderr) => {
+            if (error) {
+              reject(new Error(stderr?.trim() || error.message));
+            } else {
+              resolve();
+            }
+          },
+        );
+      }
     });
 
     const processName = cleanApp.replace(/\.exe$/i, "");
@@ -579,11 +635,24 @@ function openUrl(url) {
       };
     }
 
-    exec(`start "" "${cleanUrl}"`, (error) => {
-      if (error) {
-        console.error("Open URL error:", error.message);
-      }
-    });
+    // The WHATWG parser accepts characters such as " ' ` { } in a host. Real hosts are
+    // letters, digits, "." "-" "_" or a bracketed IPv6 literal (IDNs are already punycode).
+    if (!/^(?:[a-z0-9_.-]+|\[[0-9a-f:.]+\])$/i.test(parsedUrl.hostname)) {
+      return {
+        success: false,
+        error: "Invalid URL",
+      };
+    }
+
+    execFile(
+      "rundll32.exe",
+      ["url.dll,FileProtocolHandler", parsedUrl.href],
+      (error) => {
+        if (error) {
+          console.error("Open URL error:", error.message);
+        }
+      },
+    );
 
     return {
       success: true,
@@ -763,11 +832,19 @@ async function focusApp(app) {
 
   const cleanApp = app.trim();
 
-  const escapedApp = cleanApp.replace(/'/g, "''");
-  const processName = escapedApp.replace(/\.exe$/i, "");
+  const processName = cleanApp.replace(/\.exe$/i, "");
+
+  // Process names only: letters, digits, space and _ . + ( ) -
+  // Wildcard characters are rejected because Get-Process -Name expands them.
+  if (!/^[\p{L}\p{N}][\p{L}\p{N} _.+()-]*$/u.test(processName)) {
+    return {
+      success: false,
+      error: "Invalid application name",
+    };
+  }
 
   const command = `
-$processes = Get-Process -Name '${processName}' -ErrorAction SilentlyContinue
+$processes = Get-Process -Name $env:J9_PROCESS_NAME -ErrorAction SilentlyContinue
 if (-not $processes) {
   Write-Error 'Application process not found'
   exit 1
@@ -794,6 +871,7 @@ if (-not $activated) {
       execFile(
         "powershell.exe",
         ["-NoProfile", "-Command", command],
+        { env: { ...process.env, J9_PROCESS_NAME: processName } },
         (error) => {
           if (error) {
             reject(error);
@@ -830,6 +908,14 @@ async function openDefaultBrowser(url = "") {
           error: "Invalid URL protocol",
         };
       }
+
+      // Same host-character rule as openUrl (see the comment there).
+      if (!/^(?:[a-z0-9_.-]+|\[[0-9a-f:.]+\])$/i.test(parsedUrl.hostname)) {
+        return {
+          success: false,
+          error: "Invalid URL",
+        };
+      }
     } catch {
       return {
         success: false,
@@ -838,11 +924,14 @@ async function openDefaultBrowser(url = "") {
     }
   }
 
-  const command = cleanUrl ? `start "" "${cleanUrl}"` : `start ""`;
+  const launchFile = cleanUrl ? "rundll32.exe" : "cmd.exe";
+  const launchArgs = cleanUrl
+    ? ["url.dll,FileProtocolHandler", new URL(cleanUrl).href]
+    : ["/d", "/c", "start", ""];
 
   try {
     await new Promise((resolve, reject) => {
-      exec(command, (error) => {
+      execFile(launchFile, launchArgs, (error) => {
         if (error) {
           reject(error);
         } else {
@@ -908,16 +997,36 @@ async function hotkey(keys) {
     PGDN: "{PGDN}",
   };
 
+  // The eleven punctuation keys of the main block of a US keyboard, sent as the same
+  // characters as before. Any other single character is rejected.
+  const punctuationMap = {
+    "/": "/",
+    "-": "-",
+    "=": "=",
+    ".": ".",
+    ",": ",",
+    ";": ";",
+    "\\": "\\",
+    "`": "`",
+    "[": "[",
+    "]": "]",
+    "'": "'",
+  };
+
   let command;
 
   try {
     command = parts
       .map((key) => {
-        if (key.length === 1) {
+        if (/^[A-Z0-9]$/.test(key)) {
           return key.toLowerCase();
         }
 
-        if (keyMap[key]) {
+        if (Object.hasOwn(punctuationMap, key)) {
+          return punctuationMap[key];
+        }
+
+        if (Object.hasOwn(keyMap, key)) {
           return keyMap[key];
         }
 
@@ -942,8 +1051,9 @@ async function hotkey(keys) {
         [
           "-NoProfile",
           "-Command",
-          `$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys('${command}')`,
+          "$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys($env:J9_SENDKEYS)",
         ],
+        { env: { ...process.env, J9_SENDKEYS: command } },
         (error) => {
           if (error) {
             reject(error);

@@ -1,4 +1,18 @@
-node_modules/
+﻿node_modules/
 .env
 memory.json
 data/experiences.jsonl
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Voice development (kept locally, excluded from Git)
+.venv-voice/
+voice/
+test_audio.py
+voice_test*.wav
+
+# Temporary backups
+*.bak
+*.manual-backup

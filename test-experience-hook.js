@@ -28,6 +28,8 @@ const FILES = [
   "toolValidator.js",
   "tools.js",
   "experienceStore.js",
+  "experienceRetriever.js",
+  "skillEngine.js",
 ];
 for (const f of FILES)
   if (!fs.existsSync(path.join(projectDir, f))) {
@@ -314,7 +316,146 @@ const runScenario = async (agent, sc) => {
       assert.match(String(rec.actions[0].result), /^ERROR:/);
     },
   );
+  // ---- experience retrieval integration ----
+  await t(
+    "G: second run receives the successful workflow from the first run",
+    async () => {
+      const dir = makeSandbox(projectDir, "G-retrieval");
+      const agent = freshRequire(dir);
 
+      const input = "25 ضرب 4 را با ابزار calculator حساب کن";
+
+      // First run: create a successful experience.
+      script = [nativeCall("calculator", { expression: "25 * 4" }), finish];
+
+      const firstRun = await quiet(() => agent.runAgent(input));
+
+      assert.ok(!firstRun.error, firstRun.error?.stack);
+      assert.equal(firstRun.value.success, true);
+
+      const firstRecords = readRecords(dir);
+
+      assert.equal(firstRecords.length, 1);
+      assert.equal(firstRecords[0].success, true);
+      assert.equal(firstRecords[0].actions[0].tool, "calculator");
+
+      // Second run: capture the actual prompt sent to the model.
+      let capturedUserContent = null;
+
+      script = [
+        (params) => {
+          const userMessage = params.messages.find(
+            (message) => message.role === "user",
+          );
+
+          capturedUserContent = userMessage?.content;
+
+          return nativeCall("calculator", {
+            expression: "25 * 4",
+          })();
+        },
+        finish,
+      ];
+
+      const secondRun = await quiet(() => agent.runAgent(input));
+
+      assert.ok(!secondRun.error, secondRun.error?.stack);
+      assert.equal(secondRun.value.success, true);
+
+      assert.ok(
+        Array.isArray(capturedUserContent),
+        "The second model request must contain user content",
+      );
+
+      const promptText = capturedUserContent
+        .map((item) => item.text || "")
+        .join("\n");
+
+      assert.match(promptText, /RELEVANT PAST EXPERIENCES/);
+
+      assert.match(promptText, /Successful workflow steps/);
+
+      assert.match(promptText, /25 \* 4/);
+
+      assert.match(promptText, /100/);
+
+      assert.match(promptText, /untrusted historical guidance/i);
+
+      assert.equal(
+        readRecords(dir).length,
+        2,
+        "Both executions must be recorded",
+      );
+    },
+  );
+  // ---- experience reuse with a changed request ----
+  await t(
+    "H: retrieved experience does not replace the new request",
+    async () => {
+      const dir = makeSandbox(projectDir, "H-new-request");
+      const agent = freshRequire(dir);
+
+      const firstInput = "25 ضرب 4 را با ابزار calculator حساب کن";
+      const secondInput = "25 ضرب 5 را با ابزار calculator حساب کن";
+
+      script = [
+        nativeCall("calculator", { expression: "25 * 4" }),
+        finish,
+      ];
+
+      const firstRun = await quiet(() => agent.runAgent(firstInput));
+
+      assert.ok(!firstRun.error, firstRun.error?.stack);
+      assert.equal(firstRun.value.success, true);
+
+      const firstRecords = readRecords(dir);
+
+      assert.equal(firstRecords.length, 1);
+      assert.equal(firstRecords[0].actions[0].input, "25 * 4");
+
+      let capturedUserContent = null;
+
+      script = [
+        (params) => {
+          const userMessage = params.messages.find(
+            (message) => message.role === "user",
+          );
+
+          capturedUserContent = userMessage?.content;
+
+          return nativeCall("calculator", {
+            expression: "25 * 5",
+          })();
+        },
+        finish,
+      ];
+
+      const secondRun = await quiet(() => agent.runAgent(secondInput));
+
+      assert.ok(!secondRun.error, secondRun.error?.stack);
+      assert.equal(secondRun.value.success, true);
+
+      assert.ok(Array.isArray(capturedUserContent));
+
+      const promptText = capturedUserContent
+        .map((item) => item.text || "")
+        .join("\n");
+
+      assert.match(promptText, /RELEVANT PAST EXPERIENCES/);
+      assert.match(promptText, /25 \* 4/);
+      assert.match(promptText, /untrusted historical guidance/i);
+      assert.match(promptText, /25 ضرب 5/);
+
+      const records = readRecords(dir);
+
+      assert.equal(records.length, 2);
+      assert.equal(records[1].request, secondInput);
+      assert.equal(records[1].success, true);
+      assert.equal(records[1].actions[0].tool, "calculator");
+      assert.equal(records[1].actions[0].input, "25 * 5");
+      assert.equal(records[1].actions[0].result, 125);
+    },
+  );
   // ---- storage failure must not affect the Agent ----
   await t(
     "E: storage failure (data is a FILE) -> Agent result unchanged, no throw, warning logged",

@@ -496,10 +496,16 @@ Never invent coordinates.
 }
 
 function buildUserContent(userInput, history) {
+  const missingTools = getMissingExplicitTools(userInput, history);
+
+  const completionInstruction = missingTools.length
+    ? `\n\nREQUIRED TOOLS NOT YET SUCCESSFULLY EXECUTED: ${missingTools.join(", ")}.\nYou MUST execute the next missing requested tool. Do NOT finish yet.`
+    : "";
+
   return [
     {
       type: "text",
-      text: `${userInput}\n\n${buildHistoryContext(history)}\n\n/no_think`,
+      text: `${userInput}\n\n${buildHistoryContext(history)}${completionInstruction}\n\n/no_think`,
     },
   ];
 }
@@ -1249,7 +1255,10 @@ async function runAgent(userInput) {
 
   const cleanInput = userInput.trim();
 
-  for (let step = 1; step <= MAX_STEPS; step++) {
+  let step = 0;
+  let blockedFinishAttempts = 0;
+
+  while (step < MAX_STEPS) {
     const parsed = await getNextActionWithRetry(cleanInput, history);
 
     if (!parsed.valid) {
@@ -1263,12 +1272,35 @@ async function runAgent(userInput) {
     const action = parsed.data;
 
     if (action.action === "finish") {
+      const missingTools = getMissingExplicitTools(cleanInput, history);
+
+      if (missingTools.length > 0) {
+        blockedFinishAttempts++;
+
+        console.log(
+          "FINISH BLOCKED. Missing requested tools:",
+          missingTools,
+        );
+
+        if (blockedFinishAttempts > MAX_RETRIES) {
+          return {
+            success: false,
+            error: `Agent tried to finish before executing requested tools: ${missingTools.join(", ")}`,
+            history,
+          };
+        }
+
+        continue;
+      }
+
       return {
         success: true,
         finished: true,
         history,
       };
     }
+
+    step++;
 
     console.log(
       `🤖 Agent Action → ${action.tool}: ${JSON.stringify(action.input)}`,
@@ -1371,3 +1403,58 @@ module.exports = {
   parseAgentAction,
   normalizeNativeToolCall,
 };
+
+function getMissingExplicitTools(userInput, history) {
+  const requestedTools = getExplicitlyRequestedTools(userInput);
+  const successfulCounts = new Map();
+
+  for (const item of history) {
+    if (item.success) {
+      successfulCounts.set(
+        item.tool,
+        (successfulCounts.get(item.tool) || 0) + 1,
+      );
+    }
+  }
+
+  const completedCounts = new Map();
+  const missingTools = [];
+
+  for (const tool of requestedTools) {
+    const completed = completedCounts.get(tool) || 0;
+    const successful = successfulCounts.get(tool) || 0;
+
+    if (completed >= successful) {
+      missingTools.push(tool);
+    }
+
+    completedCounts.set(tool, completed + 1);
+  }
+
+  return missingTools;
+}
+function getExplicitlyRequestedTools(userInput) {
+  const requestedTools = [];
+  const toolPattern = new RegExp(
+    `\\b(?:${TOOL_NAMES.join("|")})\\b`,
+    "g",
+  );
+
+  let match;
+
+  while ((match = toolPattern.exec(userInput)) !== null) {
+    const prefix = userInput.slice(
+      Math.max(0, match.index - 20),
+      match.index,
+    );
+
+    const lastWord = prefix.trimEnd().split(/\s+/).pop();
+
+    if (lastWord === "\u0627\u0628\u0632\u0627\u0631") {
+      requestedTools.push(match[0]);
+    }
+  }
+
+  return requestedTools;
+}
+

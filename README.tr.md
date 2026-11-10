@@ -1,157 +1,145 @@
 # 🤖 9Jarvis
 
-**Diller:** [English](README.md) · [فارسی](README.fa.md) · [Türkçe](README.tr.md)
+> Sohbet yapay zekâsını, yerel belleği, araçları ve deneysel Windows masaüstü etkileşimini aşamalı olarak geliştiren modüler kişisel asistan.
 
-Dil modellerini, kalıcı belleği, araç kullanımını ve Windows masaüstü kontrolünü bir araya getirmek amacıyla geliştirilen modüler bir kişisel yapay zekâ asistanı.
+**Diller:** English · [فارسی](README.fa.md) · Türkçe
 
-9Jarvis'in amacı anlayabilen, hatırlayabilen, karar verebilen ve işlem gerçekleştirebilen güvenilir bir asistan oluşturmaktır.
+9Jarvis, kişisel yapay zekâ asistanlarının mimarisini araştıran herkese açık bir projedir. Proje geliştirme aşamasındadır: sohbet, yerel bellek ve Agent/araç akışı uygulanmıştır; bilgisayar etkileşimi ise deneysel durumdadır. Otomasyon iş akışları, sesli etkileşim ve grafik arayüz mevcut özellikler değil, gelecek planlarıdır.
 
 ## 📑 İçindekiler
 
-- [✨ Overview](#-overview)
-- [🚀 Features](#-features)
-- [🏗️ Architecture](#️-architecture)
-- [⚙️ Installation](#️-installation)
-- [💬 Usage](#-usage)
-- [🧪 Testing](#-testing)
-- [🗺️ Roadmap](#️-roadmap)
-- [📄 License](#-license)
+- [Genel bakış](#-genel-bakış)
+- [Özellikler ve durum](#-özellikler-ve-durum)
+- [Mimari](#️-mimari)
+- [Gereksinimler ve kurulum](#️-gereksinimler-ve-kurulum)
+- [Kullanım](#-kullanım)
+- [Testler](#-testler)
+- [Güvenlik ve gizlilik](#️-güvenlik-ve-gizlilik)
+- [Yol haritası](#️-yol-haritası)
+- [Lisans](#-lisans)
 
----
+## ✨ Genel bakış
 
-## ✨ Overview
+9Jarvis modüler mimari ve aşamalı geliştirme yaklaşımını izler:
 
-9Jarvis, modüler mimari ve aşamalı geliştirme yaklaşımıyla oluşturulmaktadır.
+> **Bir Değişiklik → Test → Sonucu İncele → Sonraki Adım**
 
-**Geliştirme yöntemi:**
+Komut satırı uygulaması, OpenRouter üzerinden sohbet modelini yerel Ollama uyumlu Agent ile birleştirir. Agent araçları seçip çalıştırır; araç çağrıları yürütülmeden önce doğrulanır. Seçilen bellek bilgileri yerel bir JSON dosyasında saklanır.
 
-`Bir Değişiklik → Test → Sonucu İncele → Sonraki Adım`
+## 🚀 Özellikler ve durum
 
-## 🚀 Features
+| Bileşen | Açıklama | Durum |
+| --- | --- | --- |
+| AI Core | OpenRouter üzerinden sohbet yanıtları | Uygulandı |
+| Bellek | Seçilen kullanıcı/proje bilgilerini yerel saklama ve bağlam olarak getirme | Uygulandı |
+| Araçlar | Yardımcı araçlar, web araması, hava durumu, döviz ve Windows etkileşimi | Uygulandı; sınırlamaları var |
+| Agent | Yerel modelle araç seçimi, doğrulama, yürütme ve sınırlandırılmış çok adımlı döngü | Uygulandı |
+| Bilgisayar etkileşimi | Windows uygulama, klavye/fare, ekran görüntüsü ve görsel analiz eylemleri | Deneysel; güvenilirlik değişebilir |
+| Otomasyon, ses, GUI | Gelecekteki geliştirmeler | Planlandı |
 
-| Bileşen          | Açıklama                                                           | Durum          |
-| ---------------- | ------------------------------------------------------------------ | -------------- |
-| AI Core          | OpenRouter üzerinden yapay zekâ modelleri                          | Uygulandı      |
-| Memory           | Yerel kalıcı bellek ve bağlam erişimi                              | Uygulandı      |
-| Tools            | Hesap makinesi, web araması, hava durumu, döviz ve sistem araçları | Uygulandı      |
-| Agent            | Yerel işlev çağrısı ve çok adımlı görev yürütme                    | Uygulandı      |
-| Computer Control | Görüntü analiziyle Windows etkileşimi                              | Geliştiriliyor |
-| Automation       | Görev otomasyonu                                                   | Planlandı      |
-| Voice            | Sesli etkileşim                                                    | Planlandı      |
-| GUI              | Grafik arayüz                                                      | Planlandı      |
+### Modeller ve servisler
 
-**Mevcut Modeller**
+- Sohbet ve son yanıtlar: OpenRouter üzerinden `openai/gpt-oss-20b`.
+- Ekran görüntüsü görsel analizi: OpenRouter üzerinden `deepseek/deepseek-v4.1-flash`.
+- Agent'ın araç kararları: Yerel Ollama uyumlu API. Varsayılanlar `http://localhost:11434/v1` ve `qwen3:4b-instruct`; ortam değişkenleriyle değiştirilebilir.
+- Web araması: Tavily; `TAVILY_API_KEY` gerekir.
+- Coğrafi kodlama ve hava durumu: Open-Meteo API'leri.
+- Döviz kurları: Frankfurter.
 
-- Sohbet: `openai/gpt-oss-20b`
-- Görüntü: `deepseek/deepseek-v4.1-flash`
+### Kullanılabilir araçlar
 
-**Teknolojiler ve Servisler:** Node.js · OpenRouter · Tavily · Open-Meteo · Frankfurter
+`calculator`, `time`, `date`, `random`, `web_search`, `geocode`, `weather`, `currency`, `open_app`, `open_url`, `close_app`, `press_key`, `hotkey`, `focus_app`, `type_text`, `open_default_browser`, `mouse_click`, `mouse_move`, `mouse_double_click`, `scroll` ve `screenshot`.
 
-## 🏗️ Architecture
+Uygulama araçları uygulamaları başlatıp kapatabilir; URL araçları adresleri açar, kapatmaz. Metin girişi şu anda Windows UI Automation kullanarak Notepad metin düzenleyicisini hedefler. Bu, tüm masaüstü uygulamalarında genel UI Automation desteği olduğu anlamına gelmez. Görsel algılama ve koordinat tabanlı eylemler hatalı olabilir.
+
+## 🏗️ Mimari
 
 ```text
-Kullanıcı
-  ↓
-Yapay Zekâ Çekirdeği
-  ↓
-Bellek ve Bağlam
-  ↓
-Agent
-  ↓
-Araç Doğrulama
-  ↓
-Araçlar / Bilgisayar Kontrolü
-  ↓
-Sonuç İşleme
-  ↓
-Yanıt
+Kullanıcı isteği
+    ↓
+main.js — CLI, bellek bağlamı ve son yanıt
+    ↓
+agent.js — yerel Agent araç çağrısına karar verir
+    ↓
+toolValidator.js — araç ve argümanları doğrular
+    ↓
+tools.js — işlemi yürütür ve sonucu döndürür
+    ↓
+Agent döngüsü — devam eder veya biter (adım/yeniden deneme sınırıyla)
 ```
 
-**Temel Modüller:** `main.js` · `agent.js` · `memory.js` · `tools.js` · `toolValidator.js`
+Temel modüller: `main.js`, `config.js`, `agent.js`, `toolValidator.js`, `tools.js`, `memory.js`, `memoryDetector.js` ve `memoryQueryDetector.js`. Agent, her işlem isteği için en fazla 5 adım ve 2 yeniden denemeyle yapılandırılmıştır.
 
-## ⚙️ Installation
+Bellek, proje çalışma dizinindeki `memory.json` dosyasında tutulur ve kişisel bilgiler içerebilir. Proje klasörünü veya yedeklerini paylaşmadan önce dosyayı inceleyin.
 
-**Gereksinimler:** Windows, Node.js, npm, Git, OpenRouter API anahtarı ve Tavily API anahtarı.
+## ⚙️ Gereksinimler ve kurulum
 
-**1. Depoyu klonlayın**
+### Gereksinimler
 
-```bash
-git clone https://github.com/Aiakos13/9Jarvis.git
-cd 9Jarvis
-```
+- Windows ve PowerShell (belgelenen masaüstü araçları Windows'a özeldir).
+- Node.js ve npm.
+- Git.
+- OpenRouter API anahtarı.
+- Agent'ın araç kararları için yapılandırılmış modelle yerel olarak çalışan Ollama.
+- Yalnızca web araması kullanacaksanız Tavily API anahtarı.
 
-**2. Bağımlılıkları yükleyin**
-
-```bash
-npm install
-```
-
-**3. Ortam değişkenlerini yapılandırın**
+### Kurulum
 
 ```powershell
+git clone https://github.com/Aiakos13/9Jarvis.git
+cd 9Jarvis
+npm install
 Copy-Item .env.example .env
 ```
 
-API anahtarlarınızı `.env` dosyasına ekleyin:
+Yerel `.env` dosyanızda `OPENROUTER_API_KEY` değerini ayarlayın. `TAVILY_API_KEY` yalnızca web araması kullanacaksanız gerekir. Agent uç noktası ve modeli `OLLAMA_BASE_URL` ve `OLLAMA_MODEL` ile değiştirilebilir; varsayılanlar `http://localhost:11434/v1` ve `qwen3:4b-instruct` şeklindedir.
 
-```env
-OPENROUTER_API_KEY=your_openrouter_api_key
-TAVILY_API_KEY=your_tavily_api_key
-```
+`.env` dosyasını veya API anahtarlarını commit etmeyin ya da paylaşmayın. Depodaki `.env.example` kullanılabilir kimlik bilgileri değil, yer tutucular içerir.
 
-`.env` dosyasını veya API anahtarlarını herkese açık şekilde paylaşmayın.
+## 💬 Kullanım
 
-## 💬 Usage
-
-Asistanı başlatın:
+Komut satırı arayüzünü başlatın:
 
 ```bash
-node main.js
+npm start
 ```
+
+Kök dizindeki `package.json`, `npm start` komutunu `node main.js` olarak tanımlar. Çıkmak için `exit` yazın.
 
 Örnek istekler:
 
 ```text
-Merhaba
 Saat kaç?
 25 * 18
-Web'de arama yap
-Bir uygulama aç
+Son haberleri web'de ara
+Berlin'de hava nasıl?
+Notepad'i aç
 ```
 
-Çıkmak için `exit` yazın.
+Web araması Tavily yapılandırması gerektirir. Hava durumu isteği önce coğrafi kodlama, ardından hava durumu API'sini kullanır. Masaüstü örnekleri Windows gerektirir ve gözetim altında kullanılmalıdır.
 
-## 🧪 Testing
+## 🧪 Testler
 
-Agent testlerini çalıştırın:
+Agent ayrıştırma ve yerel araç çağrısı testlerini çalıştırın:
 
 ```bash
 node test-agent.js
 ```
 
-**Mevcut test sonucu:** 19/19 başarılı.
+Kök dizindeki `npm test` bu betiği **çalıştırmaz**. Şu anda bir yer tutucudur; “Tests have not been configured yet” mesajını yazdırır ve hata koduyla çıkar. Seçili dosyaların sözdizimi `node --check <file>` ile denetlenebilir.
 
-JavaScript sözdizimini kontrol edin:
+## 🛡️ Güvenlik ve gizlilik
 
-```bash
-node --check main.js
-node --check agent.js
-node --check tools.js
-```
+Masaüstü araçları klavye/fare girdisi gönderebilir, uygulamaları başlatabilir ve uygulama süreçlerini zorla kapatabilir. Kullanımı denetleyin; hassas veya geri alınamaz işlemler için bu araçlara güvenmeyin. Görsel analiz için gönderilen ekran görüntüleri yapılandırılmış model sağlayıcısına iletilir. Sağlayıcının veri politikalarını inceleyin ve ekranda özel bilgileri göstermemeye dikkat edin. Yerel bellek `memory.json` dosyasında saklanır ve kişisel bilgiler içerebilir.
 
-## 🗺️ Roadmap
+## 🗺️ Yol haritası
 
-- [x] Yapay zekâ çekirdeği
-- [x] Kalıcı bellek
-- [x] Araç sistemi
-- [x] Agent mimarisi
-- [x] Temel bilgisayar kontrolü
-- [ ] Windows UI Automation
-- [ ] İşlem doğrulama
-- [ ] Gelişmiş otomasyon
-- [ ] Sesli etkileşim
-- [ ] Grafik arayüz
+- Bilgisayar kontrolünün güvenilirliğini artırmak ve eylemlerden sonra sonuçları doğrulamak.
+- Daha kapsamlı Windows UI Automation desteğini araştırmak; mevcut Notepad metin girişi dışında bu, tamamlanmış genel bir özellik değildir.
+- Otomasyon iş akışları geliştirmek.
+- Sesli etkileşimi incelemek.
+- Grafik arayüz oluşturmak.
 
-## 📄 License
+## 📄 Lisans
 
-Proje için henüz resmi bir açık kaynak lisansı eklenmemiştir.
+Depo kökünde şu anda resmi bir lisans dosyası bulunmamaktadır. Kodun yeniden kullanım veya dağıtım için lisanslı olduğunu varsaymayın; önce deponun lisans koşullarını kontrol edin. Hata bildirimleri ve öneriler [GitHub Issues](https://github.com/Aiakos13/9Jarvis/issues) üzerinden iletilebilir.

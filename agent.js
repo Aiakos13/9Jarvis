@@ -3,6 +3,7 @@ const OpenAI = require("openai");
 const { validateToolData } = require("./toolValidator");
 const { executeTool } = require("./tools");
 const config = require("./config");
+const { saveExperience } = require("./experienceStore");
 
 const client = new OpenAI({
   apiKey: config.openRouterApiKey,
@@ -1242,7 +1243,7 @@ function createHistoryItem(step, action, toolResult) {
   return item;
 }
 
-async function runAgent(userInput) {
+async function runAgentInternal(userInput) {
   const history = [];
 
   if (typeof userInput !== "string" || !userInput.trim()) {
@@ -1398,6 +1399,40 @@ async function runAgent(userInput) {
   };
 }
 
+async function runAgent(userInput) {
+  const startedAt = Date.now();
+  let result;
+
+  try {
+    result = await runAgentInternal(userInput);
+  } catch (error) {
+    recordAgentExperience(userInput, {
+      success: false,
+      error: error?.message || "Agent execution failed.",
+      history: [],
+    }, startedAt);
+    throw error;
+  }
+
+  recordAgentExperience(userInput, result, startedAt);
+  return result;
+}
+
+function recordAgentExperience(userInput, result, startedAt) {
+  try {
+    if (typeof userInput !== "string" || !userInput.trim()) return;
+
+    saveExperience({
+      request: userInput,
+      history: result?.history,
+      success: result?.success === true,
+      error: result?.error,
+      durationMs: Date.now() - startedAt,
+    });
+  } catch (error) {
+    console.log(`Experience storage failed: ${error?.message || error}`);
+  }
+}
 module.exports = {
   runAgent,
   parseAgentAction,

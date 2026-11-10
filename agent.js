@@ -260,7 +260,7 @@ GENERAL RULES:
 2. Only use the available tools.
 3. If the request can be answered without a tool, return {"action":"finish"}.
 4. If the user's request requires a tool that has not been successfully executed, use that tool.
-5. If a successful previous tool result already satisfies the user's request, return {"action":"finish"}.
+5. Return {"action":"finish"} ONLY when every action explicitly requested by the user has been successfully completed.
 6. Never repeat a successful tool when its result already satisfies the request.
 7. Never return tool results yourself.
 8. Never return fields such as "answer", "result", "time", or "date".
@@ -268,6 +268,17 @@ GENERAL RULES:
 10. Do not use markdown.
 11. Do not explain your decision.
 12. Do not return an empty response.
+MULTI-STEP TASKS:
+- Treat every explicitly requested action as a separate required task.
+- Completing one action does NOT mean the entire request is complete.
+- After each successful tool execution, inspect the history and select the next requested action that has not yet succeeded.
+- If the user asks to open an application and then type text:
+  1. Call open_app with the application name.
+  2. After successful opening, call focus_app with the same application name.
+  3. After successful focusing, call type_text with the exact requested text.
+  4. Only finish after type_text succeeds.
+- Never skip a requested action just because a previous action succeeded.
+- Never claim an action was completed unless its corresponding tool execution appears in history with SUCCESS status.
 
 CALCULATOR:
 - Use only for mathematical calculations.
@@ -978,14 +989,26 @@ async function askAgentForNextAction(userInput, history) {
 
     const lastHistoryItem = history[history.length - 1];
 
-    if (lastHistoryItem?.success) {
+    const trimmed = content.trim();
+    let actionShaped = false;
+
+    try {
+      const parsed = JSON.parse(cleanJsonResponse(trimmed));
+      actionShaped =
+        parsed &&
+        typeof parsed === "object" &&
+        !Array.isArray(parsed) &&
+        typeof parsed.action === "string";
+    } catch {}
+
+    if (lastHistoryItem?.success && !actionShaped) {
       return JSON.stringify({
         action: "finish",
-        response: content.trim(),
+        response: trimmed,
       });
     }
 
-    return content.trim();
+    return trimmed;
   }
 
   const finishReason = choice?.finish_reason || "unknown";

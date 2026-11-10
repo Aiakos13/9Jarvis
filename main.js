@@ -285,49 +285,56 @@ async function askUser(userInput) {
       return;
     }
     // ========================================
-    // 1. Detect and save memory
+    // ========================================
+    // 1 & 2. Detect and retrieve memory in parallel
     // ========================================
 
-    try {
-      const detectedMemory = await detectMemory(cleanInput);
+    const [memoryDetection, memoryQueryDetection] =
+      await Promise.allSettled([
+        detectMemory(cleanInput),
+        detectMemoryQuery(cleanInput),
+      ]);
 
+    // 1. Save detected memory
+
+    if (memoryDetection.status === "fulfilled") {
       let memoryData;
 
       try {
-        memoryData = JSON.parse(detectedMemory);
+        memoryData = JSON.parse(memoryDetection.value);
       } catch {
-        memoryData = {
-          shouldRemember: false,
-        };
+        memoryData = { shouldRemember: false };
       }
 
       if (memoryData.shouldRemember) {
-        const memoryResult = saveDetectedMemory(
-          memoryData.category,
-          memoryData.key,
-          memoryData.value,
-          memoryData.multiple,
-        );
+        try {
+          saveDetectedMemory(
+            memoryData.category,
+            memoryData.key,
+            memoryData.value,
+            memoryData.multiple,
+          );
 
-        console.log(`🧠 Memory saved → ${memoryData.key}`);
+          console.log(`Memory saved -> ${memoryData.key}`);
+        } catch (error) {
+          console.log(`Memory save skipped: ${error.message}`);
+        }
       }
-    } catch (error) {
-      console.log(`⚠️ Memory detection skipped: ${error.message}`);
+    } else {
+      console.log(
+        `Memory detection skipped: ${memoryDetection.reason.message}`,
+      );
     }
 
-    // ========================================
     // 2. Retrieve relevant memory
-    // ========================================
 
     let memoryContext = {};
 
-    try {
-      const detectedQuery = await detectMemoryQuery(cleanInput);
-
+    if (memoryQueryDetection.status === "fulfilled") {
       let memoryQueryData;
 
       try {
-        memoryQueryData = JSON.parse(detectedQuery);
+        memoryQueryData = JSON.parse(memoryQueryDetection.value);
       } catch {
         memoryQueryData = {
           needsMemory: false,
@@ -339,10 +346,16 @@ async function askUser(userInput) {
         memoryQueryData.needsMemory &&
         Array.isArray(memoryQueryData.memories)
       ) {
-        memoryContext = buildMemoryContext(memoryQueryData.memories);
+        try {
+          memoryContext = buildMemoryContext(memoryQueryData.memories);
+        } catch (error) {
+          console.log(`Memory retrieval skipped: ${error.message}`);
+        }
       }
-    } catch (error) {
-      console.log(`⚠️ Memory retrieval skipped: ${error.message}`);
+    } else {
+      console.log(
+        `Memory retrieval skipped: ${memoryQueryDetection.reason.message}`,
+      );
     }
 
     // ========================================

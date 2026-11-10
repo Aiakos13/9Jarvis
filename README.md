@@ -1,157 +1,145 @@
 # 🤖 9Jarvis
 
-**Languages:** [English](README.md) · [فارسی](README.fa.md) · [Türkçe](README.tr.md)
+> A modular personal AI assistant built incrementally, combining conversational AI, local memory, tools, and experimental Windows desktop interaction.
 
-A modular personal AI assistant designed to combine language models, persistent memory, intelligent tool usage, and Windows computer control.
+**Languages:** English · [فارسی](README.fa.md) · [Türkçe](README.tr.md)
 
-9Jarvis is an evolving project focused on building a reliable assistant that can understand, remember, decide, and act.
+9Jarvis is a publicly available project exploring the architecture of personal AI assistants. The project is under active development: chat, local memory, and the Agent/tool flow are implemented, while computer interaction is experimental. Automation workflows, voice interaction, and a graphical interface are planned rather than current features.
 
-## 📑 Quick Navigation
+## 📑 Contents
 
-- [✨ Overview](#-overview)
-- [🚀 Features](#-features)
-- [🏗️ Architecture](#️-architecture)
-- [⚙️ Installation](#️-installation)
-- [💬 Usage](#-usage)
-- [🧪 Testing](#-testing)
-- [🗺️ Roadmap](#️-roadmap)
-- [📄 License](#-license)
-
----
+- [Overview](#-overview)
+- [Features and status](#-features-and-status)
+- [Architecture](#️-architecture)
+- [Requirements and setup](#️-requirements-and-setup)
+- [Usage](#-usage)
+- [Testing](#-testing)
+- [Safety and privacy](#-safety-and-privacy)
+- [Roadmap](#-roadmap)
+- [License](#-license)
 
 ## ✨ Overview
 
-9Jarvis follows a modular architecture and an incremental development approach.
+9Jarvis follows a modular, incremental development approach:
 
-**Development Workflow:**
+> **One Change → Test → Inspect Output → Next Change**
 
-`One Change → Test → Inspect Output → Next Change`
+Its command-line application combines an OpenRouter-powered conversational model with a local Ollama-compatible Agent that selects and runs validated tools. Selected memory is stored in a local JSON file.
 
-## 🚀 Features
+## 🚀 Features and status
 
-| Component        | Description                                                 | Status      |
-| ---------------- | ----------------------------------------------------------- | ----------- |
-| AI Core          | LLM integration via OpenRouter                              | Implemented |
-| Memory           | Persistent local memory and context retrieval               | Implemented |
-| Tools            | Calculator, web search, weather, currency, and system tools | Implemented |
-| Agent            | Native function calling and multi-step execution            | Implemented |
-| Computer Control | Vision-based Windows interaction                            | In Progress |
-| Automation       | Task automation                                             | Planned     |
-| Voice            | Speech interaction                                          | Planned     |
-| GUI              | Graphical interface                                         | Planned     |
+| Component | Description | Status |
+| --- | --- | --- |
+| AI Core | Conversational responses through OpenRouter | Implemented |
+| Memory | Selected user/project information stored locally and retrieved as context | Implemented |
+| Tools | Utility, web-search, weather, currency, and Windows interaction tools | Implemented; see limitations |
+| Agent | Local-model tool selection, validation, execution, and bounded multi-step loop | Implemented |
+| Computer interaction | Windows application, keyboard/mouse, screenshot, and vision actions | Experimental; reliability varies |
+| Automation, voice, GUI | Future extensions | Planned |
 
-**Current Models**
+### Models and services
 
-- Chat: `openai/gpt-oss-20b`
-- Vision: `deepseek/deepseek-v4.1-flash`
+- Chat and final responses: `openai/gpt-oss-20b` through OpenRouter.
+- Screenshot vision analysis: `deepseek/deepseek-v4.1-flash` through OpenRouter.
+- Agent tool decisions: local Ollama-compatible API. Defaults are `http://localhost:11434/v1` and `qwen3:4b-instruct`; both can be overridden with environment variables.
+- Web search: Tavily; requires `TAVILY_API_KEY`.
+- Geocoding and weather: Open-Meteo APIs.
+- Currency exchange rates: Frankfurter.
 
-**Technology & Services:** Node.js · OpenRouter · Tavily · Open-Meteo · Frankfurter
+### Available tools
+
+`calculator`, `time`, `date`, `random`, `web_search`, `geocode`, `weather`, `currency`, `open_app`, `open_url`, `close_app`, `press_key`, `hotkey`, `focus_app`, `type_text`, `open_default_browser`, `mouse_click`, `mouse_move`, `mouse_double_click`, `scroll`, and `screenshot`.
+
+Application tools can launch and close applications; URL tools open URLs but do not close them. Text entry currently targets a Notepad text editor through Windows UI Automation. This does not imply general UI Automation support across desktop apps. Vision-based detection and coordinate-based actions can be inaccurate.
 
 ## 🏗️ Architecture
 
 ```text
-User
-  ↓
-AI Core
-  ↓
-Memory + Context
-  ↓
-Agent
-  ↓
-Tool Validation
-  ↓
-Tools / Computer Control
-  ↓
-Result Processing
-  ↓
-Response
+User request
+    ↓
+main.js — CLI, memory context, final response
+    ↓
+agent.js — local Agent decides whether to call a tool
+    ↓
+toolValidator.js — validates tool and arguments
+    ↓
+tools.js — executes the operation and returns a result
+    ↓
+Agent loop — continues or finishes (bounded by step/retry limits)
 ```
 
-**Main Modules:** `main.js` · `agent.js` · `memory.js` · `tools.js` · `toolValidator.js`
+Core modules include `main.js`, `config.js`, `agent.js`, `toolValidator.js`, `tools.js`, `memory.js`, `memoryDetector.js`, and `memoryQueryDetector.js`. The Agent is configured for at most 5 steps and 2 retries per action request.
 
-## ⚙️ Installation
+Memory is stored in `memory.json` in the project working directory. It can contain personal details; inspect it before sharing project folders or backups.
 
-**Requirements:** Windows, Node.js, npm, Git, OpenRouter API key, and Tavily API key.
+## ⚙️ Requirements and setup
 
-**1. Clone the repository**
+### Requirements
 
-```bash
-git clone https://github.com/Aiakos13/9Jarvis.git
-cd 9Jarvis
-```
+- Windows and PowerShell (the documented desktop tools are Windows-specific).
+- Node.js and npm.
+- Git.
+- An OpenRouter API key.
+- Ollama running locally with the configured model for Agent tool decisions.
+- A Tavily API key only if you use web search.
 
-**2. Install dependencies**
-
-```bash
-npm install
-```
-
-**3. Configure environment**
+### Install
 
 ```powershell
+git clone https://github.com/Aiakos13/9Jarvis.git
+cd 9Jarvis
+npm install
 Copy-Item .env.example .env
 ```
 
-Add your API keys to `.env`:
+Set `OPENROUTER_API_KEY` in your local `.env`. Add `TAVILY_API_KEY` only when using web search. The Agent endpoint and model can be changed with `OLLAMA_BASE_URL` and `OLLAMA_MODEL`; their defaults are `http://localhost:11434/v1` and `qwen3:4b-instruct`.
 
-```env
-OPENROUTER_API_KEY=your_openrouter_api_key
-TAVILY_API_KEY=your_tavily_api_key
-```
-
-Never commit `.env` or expose API keys.
+Do not commit `.env` or share API keys. The checked-in `.env.example` contains placeholders, not usable credentials.
 
 ## 💬 Usage
 
-Start the assistant:
+Start the CLI:
 
 ```bash
-node main.js
+npm start
 ```
+
+The root `package.json` maps `npm start` to `node main.js`. To exit, type `exit`.
 
 Example requests:
 
 ```text
-سلام
 What time is it?
-Calculate 25 * 18
-Search the web for...
-Open an application
+25 * 18
+Search the web for recent news
+What is the weather in Berlin?
+Open Notepad
 ```
 
-Type `exit` to quit.
+Web search requires Tavily configuration. Weather requests use geocoding followed by the weather API. Desktop examples require Windows and should be supervised.
 
 ## 🧪 Testing
 
-Run the Agent tests:
+Run the Agent parser and native tool-call tests with:
 
 ```bash
 node test-agent.js
 ```
 
-**Current test results:** 19/19 passed.
+The root `npm test` command does **not** run this script. It is currently a placeholder that prints “Tests have not been configured yet” and exits with an error. Syntax checks for selected files can be run with `node --check <file>`.
 
-Check JavaScript syntax:
+## 🛡️ Safety and privacy
 
-```bash
-node --check main.js
-node --check agent.js
-node --check tools.js
-```
+Desktop tools can send keyboard/mouse input, launch applications, and force-close application processes. Supervise their use; avoid using them for sensitive or irreversible actions. Screenshots sent for vision analysis are sent to the configured model provider. Review the provider’s data policies and avoid exposing private screen content. Local memory is kept in `memory.json` and may include personal information.
 
 ## 🗺️ Roadmap
 
-- [x] AI Core
-- [x] Persistent Memory
-- [x] Tool System
-- [x] Agent Architecture
-- [x] Basic Computer Control
-- [ ] Windows UI Automation
-- [ ] Reliable action verification
-- [ ] Advanced Automation
-- [ ] Voice Interaction
-- [ ] Graphical Interface
+- Improve computer-control reliability and validate actions after execution.
+- Investigate broader Windows UI Automation support; beyond the current Notepad text-entry implementation, this is not a completed general feature.
+- Develop automation workflows.
+- Explore voice interaction.
+- Build a graphical interface.
 
 ## 📄 License
 
-A formal open-source license has not yet been added.
+No formal license file is currently provided at the repository root. Do not assume the project is licensed for reuse or redistribution; check the repository’s licensing terms first. Bug reports and suggestions can be submitted through [GitHub Issues](https://github.com/Aiakos13/9Jarvis/issues).

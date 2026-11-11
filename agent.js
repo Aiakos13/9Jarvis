@@ -24,6 +24,7 @@ const VISION_MODEL = "deepseek/deepseek-v4.1-flash";
 const MAX_STEPS = 5;
 const MAX_RETRIES = 2;
 const REQUEST_TIMEOUT = 120000;
+const TOOL_TIMEOUT = config.toolTimeout;
 
 const AGENT_MAX_TOKENS = 2000;
 const VISION_MAX_TOKENS = 3000;
@@ -1334,6 +1335,25 @@ function createHistoryItem(step, action, toolResult) {
   return item;
 }
 
+async function executeToolWithTimeout(name, input) {
+  let timeoutId;
+
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`Tool "${name}" timed out after ${TOOL_TIMEOUT / 1000}s.`));
+    }, TOOL_TIMEOUT);
+  });
+
+  try {
+    return await Promise.race([
+      Promise.resolve(executeTool(name, input)),
+      timeout,
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function runAgentInternal(userInput) {
   const history = [];
 
@@ -1446,7 +1466,7 @@ async function runAgentInternal(userInput) {
     let toolResult;
 
     try {
-      toolResult = await executeTool(action.tool, action.input);
+      toolResult = await executeToolWithTimeout(action.tool, action.input);
 
       /*
        * SCREENSHOT + VISION

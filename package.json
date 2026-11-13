@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "node main.js",
-    "test": "node test-experience-hook.js && node test-experience-retriever.js && node test-skill-engine.js && node test-skill-integration.js && node test-agent.js && node test-tool-timeout.js && node test-tool-timeout-config.js"
+    "test": "node test-experience-hook.js && node test-experience-retriever.js && node test-skill-engine.js && node test-skill-integration.js && node test-agent.js && node test-tool-timeout.js && node test-tool-timeout-config.js && node test-request-retry.js"
   },
   "keywords": [],
   "author": "",

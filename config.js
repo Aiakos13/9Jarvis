@@ -27,6 +27,28 @@ function parseToolTimeout(value) {
   return DEFAULT_TOOL_TIMEOUT;
 }
 
+
+const MAX_REQUEST_TIMEOUT = 2147483647;
+
+function parsePositiveInteger(value, fallback, maximum, name) {
+  if (value === undefined) return fallback;
+
+  const text = String(value).trim();
+
+  if (/^\d+$/.test(text)) {
+    const parsed = Number(text);
+    if (Number.isSafeInteger(parsed) && parsed > 0 && parsed <= maximum) {
+      return parsed;
+    }
+  }
+
+  console.warn(
+    `${name} is invalid and was ignored. Using the default (${fallback}).`,
+  );
+
+  return fallback;
+}
+
 const config = {
   openRouterApiKey: process.env.OPENROUTER_API_KEY,
 
@@ -37,6 +59,34 @@ const config = {
     process.env.OLLAMA_MODEL || "qwen3:4b-instruct",
 
   toolTimeout: parseToolTimeout(process.env.TOOL_TIMEOUT),
+
+  agentRequestTimeout: parsePositiveInteger(
+    process.env.AGENT_REQUEST_TIMEOUT,
+    120000,
+    MAX_REQUEST_TIMEOUT,
+    "AGENT_REQUEST_TIMEOUT",
+  ),
+
+  visionRequestTimeout: parsePositiveInteger(
+    process.env.VISION_REQUEST_TIMEOUT,
+    120000,
+    MAX_REQUEST_TIMEOUT,
+    "VISION_REQUEST_TIMEOUT",
+  ),
+
+  agentMaxAttempts: parsePositiveInteger(
+    process.env.AGENT_MAX_ATTEMPTS,
+    2,
+    5,
+    "AGENT_MAX_ATTEMPTS",
+  ),
+
+  visionMaxAttempts: parsePositiveInteger(
+    process.env.VISION_MAX_ATTEMPTS,
+    2,
+    5,
+    "VISION_MAX_ATTEMPTS",
+  ),
 };
 
 if (!config.openRouterApiKey) {

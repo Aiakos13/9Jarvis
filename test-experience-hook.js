@@ -30,6 +30,7 @@ const FILES = [
   "experienceStore.js",
   "experienceRetriever.js",
   "skillEngine.js",
+  "requestRetry.js",
 ];
 for (const f of FILES)
   if (!fs.existsSync(path.join(projectDir, f))) {

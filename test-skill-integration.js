@@ -15,6 +15,7 @@ const FILES = [
   "experienceStore.js",
   "experienceRetriever.js",
   "skillEngine.js",
+  "requestRetry.js",
 ];
 
 const originalLoad = Module._load;

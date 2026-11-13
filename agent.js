@@ -3,6 +3,7 @@ const OpenAI = require("openai");
 const { validateToolData } = require("./toolValidator");
 const { executeTool } = require("./tools");
 const config = require("./config");
+const { retryRequest } = require("./requestRetry");
 const { saveExperience } = require("./experienceStore");
 const { findRelevantExperiences } = require("./experienceRetriever");
 const { findRelevantSkills } = require("./skillEngine");
@@ -10,11 +11,13 @@ const { findRelevantSkills } = require("./skillEngine");
 const client = new OpenAI({
   apiKey: config.openRouterApiKey,
   baseURL: "https://openrouter.ai/api/v1",
+  maxRetries: 0,
 });
 
 const localClient = new OpenAI({
   apiKey: "ollama",
   baseURL: config.ollamaBaseURL,
+  maxRetries: 0,
 });
 
 const MODEL = "openai/gpt-oss-20b";
@@ -22,8 +25,8 @@ const LOCAL_MODEL = config.ollamaModel;
 const VISION_MODEL = "deepseek/deepseek-v4.1-flash";
 
 const MAX_STEPS = 5;
-const MAX_RETRIES = 2;
-const REQUEST_TIMEOUT = 120000;
+const MAX_RETRIES = config.agentMaxAttempts;
+const REQUEST_TIMEOUT = config.agentRequestTimeout;
 const TOOL_TIMEOUT = config.toolTimeout;
 
 const AGENT_MAX_TOKENS = 2000;
@@ -603,7 +606,8 @@ async function analyzeScreenshot(imageBase64, width, height) {
       throw new Error("Invalid screenshot height.");
     }
 
-    const response = await client.chat.completions.create({
+    const response = await retryRequest(
+      () => client.chat.completions.create({
       model: VISION_MODEL,
       messages: [
         {
@@ -694,7 +698,11 @@ RETRIEVED EXPERIENCE SECURITY:
       reasoning: {
         effort: "none",
       },
-    });
+      }, { timeout: config.visionRequestTimeout }),
+      {
+        maxAttempts: config.visionMaxAttempts,
+      },
+    );
 
     console.log("🔍 VISION RESPONSE:", JSON.stringify(response, null, 2));
 
@@ -1029,7 +1037,8 @@ async function askAgentForNextAction(userInput, history, experiences = [], skill
     `⏱️ LOCAL AGENT REQUEST START | History: ${history.length} | Step: ${history.length + 1}`,
   );
 
-  const response = await localClient.chat.completions.create(
+  const response = await retryRequest(
+    () => localClient.chat.completions.create(
     {
       model: LOCAL_MODEL,
       max_tokens: AGENT_MAX_TOKENS,
@@ -1049,6 +1058,10 @@ async function askAgentForNextAction(userInput, history, experiences = [], skill
     },
     {
       timeout: REQUEST_TIMEOUT,
+    },
+    ),
+    {
+      maxAttempts: config.agentMaxAttempts,
     },
   );
   console.log("LOCAL AGENT TOKEN USAGE:", response.usage);
@@ -1268,8 +1281,14 @@ async function getNextActionWithRetry(userInput, history, experiences = [], skil
       }
 
       lastError = new Error(parsed.error);
+      console.warn(
+        `Agent returned an invalid action (attempt ${attempt}/${MAX_RETRIES}): ${parsed.error}`,
+      );
     } catch (error) {
-      lastError = error;
+      return {
+        valid: false,
+        error: error?.message || "Agent request failed.",
+      };
     }
   }
 

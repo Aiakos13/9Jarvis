@@ -23,6 +23,7 @@ const FILES = [
   "experienceStore.js",
   "experienceRetriever.js",
   "skillEngine.js",
+  "requestRetry.js",
 ];
 for (const f of FILES)
   if (!fs.existsSync(path.join(projectDir, f))) {
@@ -294,7 +295,15 @@ const t = async (name, fn) => {
         "ollamaBaseURL",
         "ollamaModel",
         "toolTimeout",
+        "agentRequestTimeout",
+        "visionRequestTimeout",
+        "agentMaxAttempts",
+        "visionMaxAttempts",
       ]);
+      assert.equal(config.agentRequestTimeout, 120000);
+      assert.equal(config.visionRequestTimeout, 120000);
+      assert.equal(config.agentMaxAttempts, 2);
+      assert.equal(config.visionMaxAttempts, 2);
       assert.equal(config.openRouterApiKey, "dummy-not-used");
       assert.equal(config.ollamaBaseURL, "http://localhost:11434/v1");
       assert.equal(config.ollamaModel, "qwen3:4b-instruct");

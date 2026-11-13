@@ -27,6 +27,7 @@ const FILES = [
   "experienceStore.js",
   "experienceRetriever.js",
   "skillEngine.js",
+  "requestRetry.js",
 ];
 for (const f of FILES)
   if (!fs.existsSync(path.join(projectDir, f))) {
@@ -314,6 +315,38 @@ const t = async (name, fn) => {
     assert.equal(budgetTimers.size, 1);
     assert.equal(clearedBudgetTimers.size, 1);
   });
+
+
+  // Agent-level integration test for the shared requestRetry module
+  await t(
+    "Agent retries a transient model HTTP 503 and succeeds on the second request",
+    async () => {
+      const s = sandbox(null, "agent-retry", {});
+      let modelCalls = 0;
+
+      script = [
+        async () => {
+          modelCalls++;
+          const error = new Error("Temporary service unavailable");
+          error.status = 503;
+          throw error;
+        },
+        async () => {
+          modelCalls++;
+          return finish();
+        },
+      ];
+
+      const r = await withWatchdog(
+        quiet(() => s.agent.runAgent("Say hello")),
+      );
+
+      assert.notEqual(r, "__HANG__", "runAgent hung");
+      assert.equal(r.success, true, JSON.stringify(r));
+      assert.equal(modelCalls, 2, "Agent did not make exactly two model requests");
+      assert.equal(script.length, 0, "Expected retry response was not consumed");
+    },
+  );
 
   // 2. ordinary outcomes must be unchanged
   const ordinary = {
